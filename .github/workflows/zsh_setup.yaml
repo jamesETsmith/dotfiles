@@ -1,0 +1,14 @@
+name: ZSH Setup
+on:
+  push:
+    branches:
+      - main
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup ZSH
+        run: |
+          bash setup-new-machine.sh

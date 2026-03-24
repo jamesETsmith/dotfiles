@@ -1,0 +1,68 @@
+default_stages: [pre-commit]
+fail_fast: false
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+      - id: detect-private-key
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        name: shellcheck (bash/sh)
+        files: (^|/).*\.(sh|bash)$
+        args:
+          - --severity=style
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - --exclude-files
+          - (^|/)\.zshrc\.local$
+          - --exclude-lines
+          - ^export ANTHROPIC_(API_KEY|CUSTOM_HEADERS)="replace-me.*"$
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.17.2
+    hooks:
+      - id: yamlfmt
+        files: (^|/).*\.(yaml|yml)$
+  - repo: local
+    hooks:
+      - id: shfmt
+        name: shfmt (bash/sh formatter)
+        language: python
+        additional_dependencies:
+          - shfmt-py==3.11.0.2
+        entry: shfmt
+        args:
+          - -w
+          - -i
+          - "2"
+          - -ci
+        files: (^|/).*\.(sh|bash)$
+      - id: beautysh
+        name: beautysh (zsh formatter)
+        language: python
+        additional_dependencies:
+          - beautysh==6.2.1
+        entry: beautysh
+        args:
+          - --indent-size
+          - "2"
+        files: (^|/)(\.zsh(rc|env|profile)|.*\.zsh)$
+      - id: zsh-syntax-check
+        name: zsh syntax check
+        language: system
+        entry: zsh -n
+        files: (^|/)(\.zsh(rc|env|profile)|.*\.zsh)$
