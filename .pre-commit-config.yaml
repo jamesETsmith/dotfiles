@@ -30,8 +30,6 @@ repos:
         args:
           - --exclude-files
           - (^|/)\.zshrc\.local$
-          - --exclude-lines
-          - ^export ANTHROPIC_(API_KEY|CUSTOM_HEADERS)="replace-me.*"$
   - repo: https://github.com/google/yamlfmt
     rev: v0.17.2
     hooks:

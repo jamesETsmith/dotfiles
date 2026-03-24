@@ -6,7 +6,6 @@ set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 ZSHRC_PATH="${HOME}/.zshrc"
-ZSHRC_LOCAL_PATH="${HOME}/.zshrc.local"
 OH_MY_ZSH_DIR="${HOME}/.oh-my-zsh"
 OH_MY_ZSH_CUSTOM="${ZSH_CUSTOM:-${OH_MY_ZSH_DIR}/custom}"
 
@@ -133,12 +132,6 @@ if [[ -f \$HOME/.zshrc.local ]]; then
 fi
 EOF
 
-  if [[ ! -f "${ZSHRC_LOCAL_PATH}" ]]; then
-    chmod 600 "${ZSHRC_LOCAL_PATH}"
-    log "Created ${ZSHRC_LOCAL_PATH} with placeholders."
-  else
-    log "${ZSHRC_LOCAL_PATH} already exists; not overwriting."
-  fi
 }
 
 set_default_shell() {
@@ -166,7 +159,6 @@ main() {
 
   log "Setup complete."
   log "Run: source ~/.zshrc"
-  log "Then edit ~/.zshrc.local with real API values."
 }
 
 main "$@"
