@@ -135,6 +135,17 @@ EOF
 }
 
 set_default_shell() {
+  # CI and other non-interactive environments should not attempt shell changes.
+  if [[ -n "${CI:-}" ]]; then
+    log "CI environment detected; skipping default shell change."
+    return
+  fi
+
+  if [[ ! -t 0 ]]; then
+    log "Non-interactive session detected; skipping default shell change."
+    return
+  fi
+
   if [[ "${SHELL:-}" == *"zsh" ]]; then
     log "Default shell already zsh."
     return
@@ -145,8 +156,15 @@ set_default_shell() {
     return
   fi
 
+  if ! command -v chsh >/dev/null 2>&1; then
+    log "chsh not found; skipping default shell change."
+    return
+  fi
+
   log "Changing default shell to zsh..."
-  chsh -s "$(command -v zsh)"
+  if ! chsh -s "$(command -v zsh)"; then
+    log "Unable to change default shell automatically. Please run chsh manually."
+  fi
 }
 
 main() {
