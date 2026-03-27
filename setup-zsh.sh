@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Recreates James' zsh environment on a fresh Linux machine.
-# Usage: ./setup-new-machine.sh
+# Usage: ./setup-zsh.sh
 
 SCRIPT_NAME="$(basename "$0")"
 ZSHRC_PATH="${HOME}/.zshrc"
