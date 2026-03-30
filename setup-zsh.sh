@@ -107,6 +107,12 @@ install_starship() {
   curl -fsSL https://starship.rs/install.sh | sh -s -- -y
 }
 
+configure_starship() {
+  mkdir -p "${HOME}/.config"
+  log "Applying starship gruvbox-rainbow preset..."
+  starship preset gruvbox-rainbow -o "${HOME}/.config/starship.toml"
+}
+
 write_zshrc() {
   if [[ -f "${ZSHRC_PATH}" ]]; then
     local backup_path
@@ -172,6 +178,7 @@ main() {
   install_oh_my_zsh
   install_plugins
   install_starship
+  configure_starship
   write_zshrc
   set_default_shell
 
