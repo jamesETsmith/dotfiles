@@ -8,7 +8,7 @@ Run the scripts directly with `curl`. Each one is self-contained and idempotent.
 
 ### Zsh + Oh My Zsh + Starship
 
-Installs zsh, [Oh My Zsh](https://ohmyz.sh/), autosuggestions/syntax-highlighting plugins, and the [Starship](https://starship.rs/) prompt with the gruvbox-rainbow preset.
+Installs zsh, [Oh My Zsh](https://ohmyz.sh/), autosuggestions/syntax-highlighting plugins, the [Starship](https://starship.rs/) prompt with the gruvbox-rainbow preset, and [uv](https://docs.astral.sh/uv/) for Python package management.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jamesETsmith/dotfiles/main/setup-zsh.sh | bash
@@ -35,7 +35,7 @@ cd dotfiles
 
 | Script              | Highlights                                                                                                                                     |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup-zsh.sh`      | Installs zsh, Oh My Zsh, zsh-autosuggestions, zsh-syntax-highlighting, Starship prompt, writes `.zshrc`, sets zsh as default shell             |
+| `setup-zsh.sh`      | Installs zsh, Oh My Zsh, zsh-autosuggestions, zsh-syntax-highlighting, Starship prompt, uv, writes `.zshrc`, sets zsh as default shell         |
 | `setup-rust-env.sh` | Installs build deps, Rust toolchain, ripgrep, bat, eza, bottom, hyperfine, sd, tokei, git-delta, zellij, writes tool configs and shell aliases |
 
 Both scripts auto-detect your package manager (apt, dnf, or pacman) and are safe to re-run.

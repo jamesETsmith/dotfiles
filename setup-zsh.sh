@@ -113,6 +113,16 @@ configure_starship() {
   starship preset gruvbox-rainbow -o "${HOME}/.config/starship.toml"
 }
 
+install_uv() {
+  if command -v uv >/dev/null 2>&1; then
+    log "uv already installed."
+    return
+  fi
+
+  log "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+}
+
 write_zshrc() {
   if [[ -f "${ZSHRC_PATH}" ]]; then
     local backup_path
@@ -130,6 +140,7 @@ source \$ZSH/oh-my-zsh.sh
 
 export PATH=\$HOME/.local/bin:\$PATH
 eval "\$(starship init zsh)"
+eval "\$(uv generate-shell-completion zsh)"
 export LANG=en_US.UTF-8
 
 # Put machine-specific or secret values in ~/.zshrc.local
@@ -179,6 +190,7 @@ main() {
   install_plugins
   install_starship
   configure_starship
+  install_uv
   write_zshrc
   set_default_shell
 
