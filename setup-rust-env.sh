@@ -16,6 +16,7 @@ RUST_TOOLS=(
   sd
   tokei
   git-delta
+  zellij
 )
 
 log() {
@@ -213,6 +214,17 @@ configure_delta() {
   fi
 }
 
+configure_zellij() {
+  local zellij_config_path="${CONFIG_HOME}/zellij/config.kdl"
+  write_file_if_missing \
+    "${zellij_config_path}" \
+    "zellij config" \
+    'theme "default"
+copy_command "xclip -selection clipboard"
+scrollback_editor "vim"
+default_layout "compact"'
+}
+
 configure_zsh_aliases() {
   local zsh_tooling_path="${HOME}/.zshrc.rust-tools"
   local zshrc_path="${HOME}/.zshrc"
@@ -252,6 +264,7 @@ main() {
   configure_bat
   configure_bottom
   configure_delta
+  configure_zellij
   configure_zsh_aliases
 
   log "Rust CLI environment setup complete."
