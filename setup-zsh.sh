@@ -103,8 +103,9 @@ install_starship() {
     return
   fi
 
+  mkdir -p "${HOME}/.local/bin"
   log "Installing starship..."
-  curl -fsSL https://starship.rs/install.sh | sh -s -- -y
+  curl -fsSL https://starship.rs/install.sh | sh -s -- -y -b "${HOME}/.local/bin"
 }
 
 configure_starship() {
