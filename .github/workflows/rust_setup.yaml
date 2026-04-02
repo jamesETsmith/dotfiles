@@ -1,0 +1,53 @@
+name: Rust Setup
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Cache cargo registry and binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+          key: cargo-tools-${{ hashFiles('setup-rust-env.sh') }}
+          restore-keys: |
+            cargo-tools-
+      - name: Run setup-rust-env.sh
+        run: bash setup-rust-env.sh
+      - name: Verify installed binaries
+        run: |
+          source "${HOME}/.cargo/env"
+          for tool in rg bat eza btm hyperfine sd tokei delta zellij; do
+            if ! command -v "${tool}" >/dev/null 2>&1; then
+              echo "FAIL: ${tool} not found on PATH"
+              exit 1
+            fi
+            echo "OK: ${tool} -> $(command -v "${tool}")"
+          done
+      - name: Verify config files
+        run: |
+          config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
+          files=(
+            "${config_home}/ripgrep/config"
+            "${config_home}/bat/config"
+            "${config_home}/bottom/bottom.toml"
+            "${config_home}/zellij/config.kdl"
+            "${HOME}/.gitconfig.delta"
+          )
+          for f in "${files[@]}"; do
+            if [[ ! -f "${f}" ]]; then
+              echo "FAIL: config missing: ${f}"
+              exit 1
+            fi
+            echo "OK: ${f}"
+          done

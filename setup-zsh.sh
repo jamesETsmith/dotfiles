@@ -30,22 +30,33 @@ detect_pkg_manager() {
 }
 
 install_base_packages() {
+  local needed=()
+  for cmd in zsh git curl; do
+    command -v "${cmd}" >/dev/null 2>&1 || needed+=("${cmd}")
+  done
+
+  if [[ ${#needed[@]} -eq 0 ]]; then
+    log "zsh, git, and curl already installed; skipping package manager."
+    return
+  fi
+
+  log "Missing: ${needed[*]}"
+
   local pkg_manager
   pkg_manager="$(detect_pkg_manager)"
 
   case "${pkg_manager}" in
     apt)
       log "Installing base packages with apt..."
-      sudo apt-get update
-      sudo apt-get install -y zsh git curl ca-certificates
+      sudo apt-get install -y "${needed[@]}" ca-certificates
       ;;
     dnf)
       log "Installing base packages with dnf..."
-      sudo dnf install -y zsh git curl ca-certificates
+      sudo dnf install -y "${needed[@]}" ca-certificates
       ;;
     pacman)
       log "Installing base packages with pacman..."
-      sudo pacman -Syu --noconfirm zsh git curl ca-certificates
+      sudo pacman -S --needed --noconfirm "${needed[@]}" ca-certificates
       ;;
     *)
       log "No supported package manager detected (apt/dnf/pacman)."
