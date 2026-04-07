@@ -1,0 +1,63 @@
+name: LLM Agents Setup
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "install-llm-agents-helpers.sh"
+      - "llm/**"
+      - ".github/workflows/llm_agents_setup.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "install-llm-agents-helpers.sh"
+      - "llm/**"
+      - ".github/workflows/llm_agents_setup.yaml"
+  workflow_dispatch:
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Verify symlink install and idempotency
+        env:
+          HOME: ${{ runner.temp }}/home-success
+        run: |
+          mkdir -p "${HOME}"
+
+          bash install-llm-agents-helpers.sh
+
+          [[ -L "${HOME}/.agents/AGENTS.md" ]]
+          [[ -L "${HOME}/.agents/skills" ]]
+
+          [[ "$(readlink "${HOME}/.agents/AGENTS.md")" == "${GITHUB_WORKSPACE}/llm/AGENTS.md" ]]
+          [[ "$(readlink "${HOME}/.agents/skills")" == "${GITHUB_WORKSPACE}/llm/skills" ]]
+
+          bash install-llm-agents-helpers.sh
+      - name: Verify incorrect symlinks are updated
+        env:
+          HOME: ${{ runner.temp }}/home-update
+        run: |
+          mkdir -p "${HOME}/.agents"
+          ln -s /tmp/not-the-repo "${HOME}/.agents/AGENTS.md"
+          ln -s /tmp/not-the-repo "${HOME}/.agents/skills"
+
+          bash install-llm-agents-helpers.sh
+
+          [[ "$(readlink "${HOME}/.agents/AGENTS.md")" == "${GITHUB_WORKSPACE}/llm/AGENTS.md" ]]
+          [[ "$(readlink "${HOME}/.agents/skills")" == "${GITHUB_WORKSPACE}/llm/skills" ]]
+      - name: Verify installer refuses to overwrite real files
+        env:
+          HOME: ${{ runner.temp }}/home-conflict
+        run: |
+          mkdir -p "${HOME}/.agents"
+          printf 'existing\n' > "${HOME}/.agents/AGENTS.md"
+
+          if bash install-llm-agents-helpers.sh; then
+            echo "FAIL: installer overwrote a real file"
+            exit 1
+          fi
+
+          [[ -f "${HOME}/.agents/AGENTS.md" ]]
