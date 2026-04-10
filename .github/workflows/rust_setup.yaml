@@ -23,7 +23,7 @@ jobs:
           restore-keys: |
             cargo-tools-
       - name: Run setup-rust-env.sh
-        run: bash setup-rust-env.sh
+        run: bash setup-rust-env.sh --install-build-deps
       - name: Verify installed binaries
         run: |
           source "${HOME}/.cargo/env"
