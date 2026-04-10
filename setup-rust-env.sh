@@ -2,11 +2,12 @@
 set -euo pipefail
 
 # Installs Rust and common CLI tooling built with cargo.
-# Usage: ./setup-rust-env.sh
+# Usage: ./setup-rust-env.sh [--install-build-deps]
 
 SCRIPT_NAME="$(basename "$0")"
 CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
 RUSTUP_INIT_URL="https://sh.rustup.rs"
+INSTALL_BUILD_DEPS=0
 RUST_TOOLS=(
   ripgrep
   bottom
@@ -21,6 +22,36 @@ RUST_TOOLS=(
 
 log() {
   printf '[%s] %s\n' "${SCRIPT_NAME}" "$*"
+}
+
+usage() {
+  cat <<EOF
+Usage: ./setup-rust-env.sh [--install-build-deps]
+
+Options:
+  --install-build-deps  Install system packages required to build some cargo crates.
+  -h, --help            Show this help message.
+EOF
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --install-build-deps)
+        INSTALL_BUILD_DEPS=1
+        ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      *)
+        log "Unknown argument: $1"
+        usage
+        exit 1
+        ;;
+    esac
+    shift
+  done
 }
 
 detect_pkg_manager() {
@@ -256,7 +287,14 @@ alias top='btm'"
 }
 
 main() {
-  install_build_deps
+  parse_args "$@"
+
+  if [[ "${INSTALL_BUILD_DEPS}" -eq 1 ]]; then
+    install_build_deps
+  else
+    log "Skipping build dependency installation; assuming required system packages are already present."
+  fi
+
   install_rust
   ensure_cargo_bin_in_path_or_zshrc
   install_rust_tools

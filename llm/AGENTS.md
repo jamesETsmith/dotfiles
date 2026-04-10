@@ -7,3 +7,4 @@ The goal here is do keep the agent generating artifacts separate from the main p
 - Save summaries of work in .agents/summaries/
 - Save output like figures, tables, scripts in .agents/outputs/
 - When applicable, use the .venv virtual env for the project, if not available, create one in .agents/.venv
+- If working in a git project, track your work in a feature branch. Wait for explicit approval before merging it back.
