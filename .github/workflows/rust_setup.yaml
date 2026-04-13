@@ -16,12 +16,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cargo/bin
-          key: cargo-tools-${{ hashFiles('setup-rust-env.sh') }}
+          key: cargo-tools-v2-${{ hashFiles('setup-rust-env.sh', '.github/workflows/rust_setup.yaml') }}
           restore-keys: |
-            cargo-tools-
+            cargo-tools-v2-
       - name: Run setup-rust-env.sh
         run: bash setup-rust-env.sh --install-build-deps
       - name: Verify installed binaries
