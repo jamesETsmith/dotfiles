@@ -1,3 +1,8 @@
+---
+name: dev-debug-loop
+description: Use when the user wants to implement a feature or fix a bug incrementally, running tests after each change and committing to git along the way.
+---
+
 # Dev Debug Loop
 
 ## Description
