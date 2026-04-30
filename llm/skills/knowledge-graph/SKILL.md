@@ -9,6 +9,29 @@ description: Create a knowledge graph during a session or across sessions to red
 This skill is used to create a knowledge graph of the knowledge during a session or across multiple sessions.
 The hope is that it reduces context requirements, but also makes the knowledge more accessible to agents and easier for humans to read and understand.
 
+## Format
+
+Files use the **Foam/Obsidian-compatible markdown format**:
+- [YAML frontmatter](https://help.obsidian.md/Editing+and+formatting/Properties) for structured metadata
+- [`[[wikilinks]]`](https://help.obsidian.md/links) for connections between nodes (CommonMark wikilinks extension)
+- Standard CommonMark markdown for body content
+
+This means `.kg/` files can be opened directly in [Obsidian](https://obsidian.md/), [Foam](https://foambubble.github.io/foam/), or any editor that supports wikilinks — links resolve, backlinks work, and the graph view shows connections.
+
+### What is standard vs. our convention
+
+| Feature | Standard (Foam/Obsidian) | Our convention |
+|---------|--------------------------|----------------|
+| YAML frontmatter | Yes | Yes |
+| `tags` property | Yes (built-in) | Yes |
+| `[[wikilinks]]` | Yes | Yes |
+| `[[name\|display text]]` | Yes | Yes |
+| `[[name#heading]]` | Yes | Yes |
+| `name`, `type`, `status` fields | Custom (but valid YAML properties) | Yes |
+| `created`, `updated` fields | Custom (but valid YAML properties) | Yes |
+| Relationship labels (`depends-on:`) | Custom (valid markdown) | Yes |
+| Case-insensitive link resolution | Yes (Obsidian/Foam default) | Yes |
+
 ## When to use
 - Use for any session other than the smallest tasks
 - When exploring or onboarding to an unfamiliar codebase
@@ -78,6 +101,19 @@ status: <active | deprecated | draft>
 | `implements` | This node is a concrete realization of the linked node |
 | `supersedes` | This node replaces the linked node (mark the other as `deprecated`) |
 
+### Wikilink Syntax
+
+Links follow the Foam/Obsidian wikilink format:
+
+| Syntax | Meaning |
+|--------|---------|
+| `[[node-name]]` | Link to a node |
+| `[[node-name\|Display Text]]` | Link with custom display text |
+| `[[node-name#Heading]]` | Link to a specific heading |
+| `[[node-name#Heading\|Display]]` | Link to heading with display text |
+
+Link resolution is **case-insensitive**: `[[API-Routes]]` and `[[api-routes]]` resolve to the same node.
+
 ## Rules
 
 1. **One concept per file.** Never combine multiple distinct ideas in a single node.
@@ -108,3 +144,10 @@ status: <active | deprecated | draft>
 ├── session-management.md
 └── ...
 ```
+
+## References
+
+- [Obsidian Properties (frontmatter)](https://help.obsidian.md/Editing+and+formatting/Properties)
+- [Obsidian Internal Links](https://help.obsidian.md/links)
+- [Foam File Format](https://github.com/foambubble/foam/blob/v0.35.0/docs/dev/foam-file-format.md)
+- [CommonMark Wikilinks Extension](https://pulldown-cmark.github.io/pulldown-cmark/specs/wikilinks.html)
