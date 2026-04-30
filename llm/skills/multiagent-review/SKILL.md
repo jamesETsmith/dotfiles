@@ -10,7 +10,7 @@ This skill is used to facilitate a review of code changes, data, or any arbitrar
 For example, if the current model is Claude Opus 4.6, you should pick GPT 5.4, Gemini 3.1 Pro, GLM 5.1, Kimi 2.6, etc.
 
 ## Orchestrating the subagents
-We want to craft the best product possible, so we need to reviewers to be critical and think antagonistically here.
+We want to craft the best product possible, so we need to reviewers to be critical and think adversarially here, but be constructive.
 
 Ask questions like:
 - What are the strongest and weakest parts of the artifact?
