@@ -18,6 +18,7 @@ RUST_TOOLS=(
   tokei
   git-delta
   zellij
+  yazi-build
 )
 
 log() {
