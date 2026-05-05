@@ -3,12 +3,62 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 jobs:
   setup:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup ZSH
+        run: bash setup-zsh.sh
+      - name: Verify installed binaries
         run: |
-          bash setup-zsh.sh
+          export PATH="${HOME}/.local/bin:${PATH}"
+          for tool in zsh git curl starship uv; do
+            if ! command -v "${tool}" >/dev/null 2>&1; then
+              echo "FAIL: ${tool} not found on PATH"
+              exit 1
+            fi
+            echo "OK: ${tool} -> $(command -v "${tool}")"
+          done
+      - name: Verify PATH includes local bin
+        run: |
+          source "${HOME}/.zshrc" 2>/dev/null || true
+          case ":${PATH}:" in
+            *":${HOME}/.local/bin:"*)
+              echo "OK: ~/.local/bin is in PATH"
+              ;;
+            *)
+              echo "FAIL: ~/.local/bin not in PATH"
+              exit 1
+              ;;
+          esac
+      - name: Verify config files
+        run: |
+          files=(
+            "${HOME}/.zshrc"
+            "${HOME}/.config/starship.toml"
+            "${HOME}/.oh-my-zsh"
+          )
+          for f in "${files[@]}"; do
+            if [[ ! -e "${f}" ]]; then
+              echo "FAIL: missing: ${f}"
+              exit 1
+            fi
+            echo "OK: ${f}"
+          done
+      - name: Verify zsh plugins installed
+        run: |
+          zsh_custom="${HOME}/.oh-my-zsh/custom"
+          for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+            if [[ ! -d "${zsh_custom}/plugins/${plugin}" ]]; then
+              echo "FAIL: plugin missing: ${plugin}"
+              exit 1
+            fi
+            echo "OK: plugin ${plugin}"
+          done
+      - name: Verify zshrc is valid zsh syntax
+        run: zsh -n "${HOME}/.zshrc"

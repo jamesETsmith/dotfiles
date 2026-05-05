@@ -128,12 +128,13 @@ install_starship() {
 
   log "Installing starship..."
   curl -fsSL https://starship.rs/install.sh | sh -s -- -y -b "${HOME}/.local/bin"
+  hash -r
 }
 
 configure_starship() {
   mkdir -p "${HOME}/.config"
   log "Applying starship gruvbox-rainbow preset..."
-  starship preset gruvbox-rainbow -o "${HOME}/.config/starship.toml"
+  "${HOME}/.local/bin/starship" preset gruvbox-rainbow -o "${HOME}/.config/starship.toml"
 }
 
 install_uv() {
