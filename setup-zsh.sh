@@ -66,6 +66,18 @@ install_base_packages() {
   esac
 }
 
+ensure_local_bin_in_path() {
+  local local_bin="${HOME}/.local/bin"
+  mkdir -p "${local_bin}"
+  case ":${PATH}:" in
+    *":${local_bin}:"*) log "${local_bin} already in PATH." ;;
+    *)
+      log "Adding ${local_bin} to PATH."
+      export PATH="${local_bin}:${PATH}"
+      ;;
+  esac
+}
+
 install_oh_my_zsh() {
   if [[ -d "${OH_MY_ZSH_DIR}" ]]; then
     log "oh-my-zsh already installed."
@@ -114,7 +126,6 @@ install_starship() {
     return
   fi
 
-  mkdir -p "${HOME}/.local/bin"
   log "Installing starship..."
   curl -fsSL https://starship.rs/install.sh | sh -s -- -y -b "${HOME}/.local/bin"
 }
@@ -150,7 +161,11 @@ export ZSH="\$HOME/.oh-my-zsh"
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
 source \$ZSH/oh-my-zsh.sh
 
-export PATH=\$HOME/.local/bin:\$PATH
+case ":\$PATH:" in
+  *":\$HOME/.local/bin:"*) ;;
+  *) export PATH="\$HOME/.local/bin:\$PATH" ;;
+esac
+
 eval "\$(starship init zsh)"
 eval "\$(uv generate-shell-completion zsh)"
 export LANG=en_US.UTF-8
@@ -198,6 +213,7 @@ set_default_shell() {
 
 main() {
   install_base_packages
+  ensure_local_bin_in_path
   install_oh_my_zsh
   install_plugins
   install_starship
