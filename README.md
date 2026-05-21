@@ -40,6 +40,10 @@ cd dotfiles
 
 Both scripts auto-detect your package manager (apt, dnf, or pacman) and are safe to re-run.
 
+## CI Timing
+
+GitHub Actions wraps setup and verification steps with `ci/measure-step.sh`. Each run writes timing details to the job summary and uploads a `timings.jsonl` artifact named by workflow and commit SHA, making setup-time changes easy to compare across commits.
+
 ## License
 
 [MIT](LICENSE)

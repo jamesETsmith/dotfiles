@@ -25,31 +25,42 @@ jobs:
           restore-keys: |
             cargo-tools-v2-
       - name: Run setup-rust-env.sh
-        run: bash setup-rust-env.sh --install-build-deps
+        run: bash ci/measure-step.sh "Run setup-rust-env.sh" bash setup-rust-env.sh --install-build-deps
       - name: Verify installed binaries
         run: |
-          source "${HOME}/.cargo/env"
-          for tool in rg bat eza btm hyperfine sd tokei delta zellij; do
-            if ! command -v "${tool}" >/dev/null 2>&1; then
-              echo "FAIL: ${tool} not found on PATH"
-              exit 1
-            fi
-            echo "OK: ${tool} -> $(command -v "${tool}")"
-          done
+          bash ci/measure-step.sh "Verify installed binaries" bash -c '
+            source "${HOME}/.cargo/env"
+            for tool in rg bat eza btm hyperfine sd tokei delta zellij; do
+              if ! command -v "${tool}" >/dev/null 2>&1; then
+                echo "FAIL: ${tool} not found on PATH"
+                exit 1
+              fi
+              echo "OK: ${tool} -> $(command -v "${tool}")"
+            done
+          '
       - name: Verify config files
         run: |
-          config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
-          files=(
-            "${config_home}/ripgrep/config"
-            "${config_home}/bat/config"
-            "${config_home}/bottom/bottom.toml"
-            "${config_home}/zellij/config.kdl"
-            "${HOME}/.gitconfig.delta"
-          )
-          for f in "${files[@]}"; do
-            if [[ ! -f "${f}" ]]; then
-              echo "FAIL: config missing: ${f}"
-              exit 1
-            fi
-            echo "OK: ${f}"
-          done
+          bash ci/measure-step.sh "Verify config files" bash -c '
+            config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
+            files=(
+              "${config_home}/ripgrep/config"
+              "${config_home}/bat/config"
+              "${config_home}/bottom/bottom.toml"
+              "${config_home}/zellij/config.kdl"
+              "${HOME}/.gitconfig.delta"
+            )
+            for f in "${files[@]}"; do
+              if [[ ! -f "${f}" ]]; then
+                echo "FAIL: config missing: ${f}"
+                exit 1
+              fi
+              echo "OK: ${f}"
+            done
+          '
+      - name: Upload timing data
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rust-setup-timings-${{ github.sha }}
+          path: .ci-timings/timings.jsonl
+          if-no-files-found: warn
