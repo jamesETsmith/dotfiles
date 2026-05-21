@@ -7,6 +7,7 @@ set -euo pipefail
 SCRIPT_NAME="$(basename "$0")"
 CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
 RUSTUP_INIT_URL="https://sh.rustup.rs"
+CARGO_BINSTALL_INSTALLER_URL="https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh"
 INSTALL_BUILD_DEPS=0
 RUST_TOOLS=(
   ripgrep
@@ -19,6 +20,18 @@ RUST_TOOLS=(
   git-delta
   zellij
   yazi-build
+)
+declare -A RUST_TOOL_COMMANDS=(
+  [ripgrep]=rg
+  [bottom]=btm
+  [bat]=bat
+  [eza]=eza
+  [hyperfine]=hyperfine
+  [sd]=sd
+  [tokei]=tokei
+  [git - delta]=delta
+  [zellij]=zellij
+  [yazi - build]=yazi
 )
 
 log() {
@@ -125,11 +138,51 @@ install_rust() {
   ensure_cargo_in_path
 }
 
+install_cargo_binstall() {
+  if command -v cargo-binstall >/dev/null 2>&1; then
+    log "cargo-binstall already installed."
+    return
+  fi
+
+  log "Installing cargo-binstall from prebuilt release..."
+  if curl --proto '=https' --tlsv1.2 -fsSL "${CARGO_BINSTALL_INSTALLER_URL}" | bash; then
+    ensure_cargo_in_path
+    if command -v cargo-binstall >/dev/null 2>&1; then
+      return
+    fi
+    log "cargo-binstall installer completed, but cargo-binstall is not on PATH."
+  else
+    log "Prebuilt cargo-binstall installer failed."
+  fi
+
+  log "Falling back to cargo install --locked cargo-binstall..."
+  cargo install --locked cargo-binstall
+}
+
+install_rust_tool() {
+  local crate="$1"
+  local command_name="${RUST_TOOL_COMMANDS[${crate}]:-${crate}}"
+
+  if command -v "${command_name}" >/dev/null 2>&1; then
+    log "${crate} already installed as ${command_name}; skipping."
+    return
+  fi
+
+  log "Installing ${crate} with cargo-binstall..."
+  if cargo binstall --no-confirm "${crate}"; then
+    return
+  fi
+
+  log "cargo-binstall could not install ${crate}; falling back to cargo install --locked..."
+  cargo install --locked "${crate}"
+}
+
 install_rust_tools() {
   local crate
+  install_cargo_binstall
+
   for crate in "${RUST_TOOLS[@]}"; do
-    log "Installing ${crate}..."
-    cargo install --locked "${crate}"
+    install_rust_tool "${crate}"
   done
 }
 
