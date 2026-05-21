@@ -1,0 +1,64 @@
+name: Vim Setup
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    env:
+      VIM_TEST_HOME: /tmp/dotfiles-vim-home
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run setup-vim.sh
+        run: |
+          mkdir -p "${VIM_TEST_HOME}"
+          HOME="${VIM_TEST_HOME}" bash ci/measure-step.sh "Run setup-vim.sh" bash setup-vim.sh
+      - name: Verify installed binaries
+        run: |
+          HOME="${VIM_TEST_HOME}" bash ci/measure-step.sh "Verify installed binaries" bash -c '
+            for tool in vim git curl; do
+              if ! command -v "${tool}" >/dev/null 2>&1; then
+                echo "FAIL: ${tool} not found on PATH"
+                exit 1
+              fi
+              echo "OK: ${tool} -> $(command -v "${tool}")"
+            done
+          '
+      - name: Verify Vim config and plugins
+        run: |
+          HOME="${VIM_TEST_HOME}" bash ci/measure-step.sh "Verify Vim config and plugins" bash -c '
+            if [[ ! -L "${HOME}/.vimrc" ]]; then
+              echo "FAIL: ~/.vimrc is not a symlink"
+              exit 1
+            fi
+
+            if [[ "$(readlink "${HOME}/.vimrc")" != "${GITHUB_WORKSPACE}/.vimrc" ]]; then
+              echo "FAIL: ~/.vimrc does not point to repo .vimrc"
+              exit 1
+            fi
+
+            for path in "${HOME}/.vim/autoload/plug.vim" "${HOME}/.vim/plugged/gruvbox"; do
+              if [[ ! -e "${path}" ]]; then
+                echo "FAIL: missing ${path}"
+                exit 1
+              fi
+              echo "OK: ${path}"
+            done
+          '
+      - name: Verify setup is idempotent
+        run: |
+          HOME="${VIM_TEST_HOME}" bash ci/measure-step.sh "Verify setup-vim.sh idempotency" bash setup-vim.sh
+      - name: Verify vimrc syntax
+        run: HOME="${VIM_TEST_HOME}" bash ci/measure-step.sh "Verify vimrc syntax" vim -Nu "${VIM_TEST_HOME}/.vimrc" -n -es -c qa
+      - name: Upload timing data
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vim-setup-timings-${{ github.sha }}
+          path: .ci-timings/timings.jsonl
+          if-no-files-found: warn

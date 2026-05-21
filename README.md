@@ -1,6 +1,6 @@
 # dotfiles
 
-Setup scripts for bootstrapping a fresh Linux machine with zsh, Rust CLI tools, and sensible defaults.
+Setup scripts for bootstrapping a fresh Linux machine with zsh, Rust CLI tools, Vim, and sensible defaults.
 
 ## Quick Start (no clone required)
 
