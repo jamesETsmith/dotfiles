@@ -30,6 +30,8 @@ repos:
         args:
           - --exclude-files
           - (^|/)\.zshrc\.local$
+          - --exclude-lines
+          - ^SETUVAR tide_pwd_
   - repo: https://github.com/google/yamlfmt
     rev: v0.17.2
     hooks:

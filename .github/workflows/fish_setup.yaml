@@ -1,0 +1,111 @@
+name: Fish Setup
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    env:
+      FISH_TEST_HOME: /tmp/dotfiles-fish-home
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Cache cargo registry and fish binary
+        uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/dotfiles-fish-home/.cargo/.crates.toml
+            /tmp/dotfiles-fish-home/.cargo/.crates2.json
+            /tmp/dotfiles-fish-home/.cargo/registry
+            /tmp/dotfiles-fish-home/.cargo/git
+            /tmp/dotfiles-fish-home/.cargo/bin
+          key: fish-cargo-v1-${{ hashFiles('setup-fish.sh', '.github/workflows/fish_setup.yaml') }}
+          restore-keys: |
+            fish-cargo-v1-
+      - name: Run setup-fish.sh
+        run: |
+          mkdir -p "${FISH_TEST_HOME}"
+          HOME="${FISH_TEST_HOME}" bash ci/measure-step.sh "Run setup-fish.sh" bash setup-fish.sh
+      - name: Verify Fish install
+        run: |
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Fish install" bash -c '
+            if ! command -v fish >/dev/null 2>&1; then
+              echo "FAIL: fish not found on PATH"
+              exit 1
+            fi
+
+            fish --version
+          '
+      - name: Verify Nerd Fonts
+        run: |
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Nerd Fonts" bash -c '
+            for font in \
+              "MesloLGS NF Regular.ttf" \
+              "MesloLGS NF Bold.ttf" \
+              "MesloLGS NF Italic.ttf" \
+              "MesloLGS NF Bold Italic.ttf"; do
+              path="${HOME}/.local/share/fonts/${font}"
+              if [[ ! -f "${path}" ]]; then
+                echo "FAIL: missing ${path}"
+                exit 1
+              fi
+              echo "OK: ${path}"
+            done
+          '
+      - name: Verify Fisher and Tide
+        run: |
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Fisher and Tide" bash -c '
+            fish -c "functions -q fisher"
+            fish -c "functions -q tide"
+
+            for path in "${HOME}/.config/fish/functions/fisher.fish" "${HOME}/.config/fish/functions/tide.fish"; do
+              if [[ ! -f "${path}" ]]; then
+                echo "FAIL: missing ${path}"
+                exit 1
+              fi
+              echo "OK: ${path}"
+            done
+          '
+      - name: Verify Fish config
+        run: |
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Fish config" bash -c '
+            if [[ "$(readlink "${HOME}/.config/fish/config.fish")" != "${GITHUB_WORKSPACE}/fish/config.fish" ]]; then
+              echo "FAIL: config.fish does not point to repo config"
+              exit 1
+            fi
+
+            if [[ "$(readlink "${HOME}/.config/fish/conf.d/rust-tools.fish")" != "${GITHUB_WORKSPACE}/fish/conf.d/rust-tools.fish" ]]; then
+              echo "FAIL: rust-tools.fish does not point to repo config"
+              exit 1
+            fi
+
+            for plugin in jorgebucaran/fisher ilancosman/tide@v6; do
+              if ! grep -Eq "^${plugin}$" "${HOME}/.config/fish/fish_plugins"; then
+                echo "FAIL: ${plugin} missing from fish_plugins"
+                exit 1
+              fi
+              echo "OK: plugin ${plugin}"
+            done
+
+            for setting in tide_left_prompt_items tide_right_prompt_items tide_prompt_transient_enabled; do
+              if ! grep -Eq "^SETUVAR ${setting}:" "${HOME}/.config/fish/fish_variables"; then
+                echo "FAIL: ${setting} missing from fish_variables"
+                exit 1
+              fi
+              echo "OK: ${setting}"
+            done
+          '
+      - name: Verify setup is idempotent
+        run: |
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify setup-fish.sh idempotency" bash setup-fish.sh
+      - name: Upload timing data
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fish-setup-timings-${{ github.sha }}
+          path: .ci-timings/timings.jsonl
+          if-no-files-found: warn

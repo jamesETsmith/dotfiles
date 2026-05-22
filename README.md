@@ -1,6 +1,6 @@
 # dotfiles
 
-Setup scripts for bootstrapping a fresh Linux machine with zsh, Rust CLI tools, Vim, and sensible defaults.
+Setup scripts for bootstrapping a fresh Linux machine with zsh, Fish, Rust CLI tools, Vim, and sensible defaults.
 
 ## Quick Start (no clone required)
 
@@ -30,6 +30,14 @@ Installs Vim, links the repo `.vimrc` to `~/.vimrc`, installs [vim-plug](https:/
 curl -fsSL https://raw.githubusercontent.com/jamesETsmith/dotfiles/main/setup-vim.sh | bash
 ```
 
+### Fish + Tide
+
+Installs Fish from source with Cargo, installs MesloLGS Nerd Font files for the prompt glyphs, installs [Fisher](https://github.com/jorgebucaran/fisher), installs [Tide](https://github.com/IlanCosman/tide), and applies the Tide prompt config captured from this machine.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jamesETsmith/dotfiles/main/setup-fish.sh | bash
+```
+
 ## Alternative: Clone and Run
 
 ```bash
@@ -38,6 +46,7 @@ cd dotfiles
 ./setup-zsh.sh
 ./setup-rust-env.sh
 ./setup-vim.sh
+./setup-fish.sh
 ```
 
 ## What Each Script Does
@@ -47,6 +56,7 @@ cd dotfiles
 | `setup-zsh.sh`      | Installs zsh, Oh My Zsh, zsh-autosuggestions, zsh-syntax-highlighting, Starship prompt, uv, writes `.zshrc`, sets zsh as default shell         |
 | `setup-rust-env.sh` | Installs build deps, Rust toolchain, ripgrep, bat, eza, bottom, hyperfine, sd, tokei, git-delta, zellij, yazi-build, writes tool configs and shell aliases |
 | `setup-vim.sh`      | Installs Vim, links `.vimrc`, installs vim-plug, and installs Vim plugins declared in `.vimrc`                                                  |
+| `setup-fish.sh`     | Installs Fish with Cargo, installs Nerd Fonts, installs Fisher and Tide, links Fish config, and applies saved Tide prompt settings               |
 
 These scripts auto-detect your package manager (apt, dnf, or pacman) and are safe to re-run.
 
