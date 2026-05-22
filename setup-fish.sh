@@ -146,7 +146,7 @@ install_fish() {
   ensure_cargo_bin_in_path
 
   log "Installing fish from ${FISH_GIT_URL} with cargo..."
-  cargo install --git "${FISH_GIT_URL}" --bin fish
+  cargo install --git "${FISH_GIT_URL}" fish --bin fish --no-default-features
   ensure_cargo_bin_in_path
 }
 
