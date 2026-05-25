@@ -49,7 +49,7 @@ install_build_deps() {
     apt)
       log "Installing Fish build dependencies with apt..."
       sudo apt-get update
-      sudo apt-get install -y curl git build-essential pkg-config cmake ca-certificates
+      sudo apt-get install -y curl git build-essential pkg-config cmake ca-certificates libpcre2-dev gettext
       ;;
     dnf)
       log "Installing Fish build dependencies with dnf..."
@@ -136,8 +136,9 @@ ensure_cargo_bin_in_path() {
 }
 
 install_fish() {
-  if command -v fish >/dev/null 2>&1; then
-    log "fish already installed at $(command -v fish)."
+  local cargo_fish="${HOME}/.cargo/bin/fish"
+  if [[ -x "${cargo_fish}" ]]; then
+    log "fish already installed at ${cargo_fish}."
     return
   fi
 
@@ -146,7 +147,14 @@ install_fish() {
   ensure_cargo_bin_in_path
 
   log "Installing fish from ${FISH_GIT_URL} with cargo..."
-  cargo install --git "${FISH_GIT_URL}" fish --bin fish --no-default-features
+  local temp_dir
+  temp_dir="$(mktemp -d)"
+  git clone --depth 1 "${FISH_GIT_URL}" "${temp_dir}"
+  (
+    cd "${temp_dir}"
+    cargo install --path . --bin fish --no-default-features
+  )
+  rm -rf "${temp_dir}"
   ensure_cargo_bin_in_path
 }
 
