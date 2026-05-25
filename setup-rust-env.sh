@@ -29,9 +29,9 @@ declare -A RUST_TOOL_COMMANDS=(
   [hyperfine]=hyperfine
   [sd]=sd
   [tokei]=tokei
-  [git - delta]=delta
+  ["git-delta"]=delta
   [zellij]=zellij
-  [yazi - build]=yazi
+  ["yazi-build"]=yazi
 )
 
 log() {
