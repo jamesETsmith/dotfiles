@@ -21,7 +21,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cargo/bin
-          key: cargo-tools-v2-${{ hashFiles('setup-rust-env.sh', '.github/workflows/rust_setup.yaml') }}
+          key: cargo-tools-v2-${{ hashFiles('setup-rust-env.sh', 'zellij/config.kdl', '.github/workflows/rust_setup.yaml') }}
           restore-keys: |
             cargo-tools-v2-
       - name: Run setup-rust-env.sh
@@ -50,12 +50,18 @@ jobs:
               "${HOME}/.gitconfig.delta"
             )
             for f in "${files[@]}"; do
-              if [[ ! -f "${f}" ]]; then
+              if [[ ! -e "${f}" ]]; then
                 echo "FAIL: config missing: ${f}"
                 exit 1
               fi
               echo "OK: ${f}"
             done
+
+            if [[ "$(readlink "${config_home}/zellij/config.kdl")" != "${GITHUB_WORKSPACE}/zellij/config.kdl" ]]; then
+              echo "FAIL: zellij config.kdl does not point to repo config"
+              exit 1
+            fi
+            echo "OK: zellij config.kdl symlink"
           '
       - name: Upload timing data
         uses: actions/upload-artifact@v4

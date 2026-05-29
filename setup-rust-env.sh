@@ -5,6 +5,7 @@ set -euo pipefail
 # Usage: ./setup-rust-env.sh [--install-build-deps]
 
 SCRIPT_NAME="$(basename "$0")"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
 RUSTUP_INIT_URL="https://sh.rustup.rs"
 CARGO_BINSTALL_INSTALLER_URL="https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh"
@@ -242,6 +243,31 @@ write_file_if_missing() {
   log "Created ${description} at ${path}."
 }
 
+link_file() {
+  local source_path="$1"
+  local target_path="$2"
+  local description="$3"
+
+  mkdir -p "$(dirname "${target_path}")"
+
+  if [[ -L "${target_path}" ]]; then
+    local current_target
+    current_target="$(readlink "${target_path}")"
+    if [[ "${current_target}" == "${source_path}" ]]; then
+      log "${description} already points to repo file."
+      return
+    fi
+  elif [[ -e "${target_path}" ]]; then
+    local backup_path
+    backup_path="${target_path}.bak.$(date +%Y%m%d-%H%M%S)"
+    mv "${target_path}" "${backup_path}"
+    log "Backed up existing ${description} to ${backup_path}."
+  fi
+
+  ln -sfn "${source_path}" "${target_path}"
+  log "Linked ${description} to ${source_path}."
+}
+
 configure_ripgrep() {
   local rg_config_path="${CONFIG_HOME}/ripgrep/config"
   write_file_if_missing \
@@ -314,14 +340,10 @@ configure_delta() {
 }
 
 configure_zellij() {
-  local zellij_config_path="${CONFIG_HOME}/zellij/config.kdl"
-  write_file_if_missing \
-    "${zellij_config_path}" \
-    "zellij config" \
-    'theme "default"
-copy_command "xclip -selection clipboard"
-scrollback_editor "vim"
-default_layout "compact"'
+  link_file \
+    "${REPO_DIR}/zellij/config.kdl" \
+    "${CONFIG_HOME}/zellij/config.kdl" \
+    "zellij config"
 }
 
 configure_zsh_aliases() {
