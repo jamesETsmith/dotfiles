@@ -26,19 +26,21 @@ jobs:
               echo "OK: ${tool} -> $(command -v "${tool}")"
             done
           '
-      - name: Verify PATH includes local bin
+      - name: Verify PATH includes user bin dirs
         run: |
-          bash ci/measure-step.sh "Verify PATH includes local bin" bash -c '
+          bash ci/measure-step.sh "Verify PATH includes user bin dirs" bash -c '
             source "${HOME}/.zshrc" 2>/dev/null || true
-            case ":${PATH}:" in
-              *":${HOME}/.local/bin:"*)
-                echo "OK: ~/.local/bin is in PATH"
-                ;;
-              *)
-                echo "FAIL: ~/.local/bin not in PATH"
-                exit 1
-                ;;
-            esac
+            for dir in "${HOME}/.local/bin" "${HOME}/.cargo/bin"; do
+              case ":${PATH}:" in
+                *":${dir}:"*)
+                  echo "OK: ${dir} is in PATH"
+                  ;;
+                *)
+                  echo "FAIL: ${dir} not in PATH"
+                  exit 1
+                  ;;
+              esac
+            done
           '
       - name: Verify config files
         run: |

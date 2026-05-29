@@ -126,13 +126,20 @@ ensure_cargo_in_path() {
   fi
 }
 
-ensure_cargo_bin_in_path() {
-  local cargo_bin="${HOME}/.cargo/bin"
-
-  if [[ ":${PATH}:" != *":${cargo_bin}:"* ]]; then
-    export PATH="${cargo_bin}:${PATH}"
-    log "Added ${cargo_bin} to current PATH for this session."
-  fi
+ensure_user_bin_dirs_in_path() {
+  local dir
+  for dir in "${HOME}/.local/bin" "${HOME}/.cargo/bin"; do
+    if [[ "${dir}" == "${HOME}/.local/bin" ]]; then
+      mkdir -p "${dir}"
+    fi
+    case ":${PATH}:" in
+      *":${dir}:"*) ;;
+      *)
+        export PATH="${dir}:${PATH}"
+        log "Added ${dir} to current PATH for this session."
+        ;;
+    esac
+  done
 }
 
 install_fish() {
@@ -143,11 +150,11 @@ install_fish() {
 
   install_build_deps
   ensure_cargo_in_path
-  ensure_cargo_bin_in_path
+  ensure_user_bin_dirs_in_path
 
   log "Installing fish from ${FISH_GIT_URL} with cargo..."
   cargo install --git "${FISH_GIT_URL}" fish --bin fish --no-default-features
-  ensure_cargo_bin_in_path
+  ensure_user_bin_dirs_in_path
 }
 
 install_nerd_fonts() {
@@ -217,6 +224,7 @@ ensure_line_in_file() {
 
 write_fish_config() {
   link_file "${REPO_DIR}/fish/config.fish" "${FISH_CONFIG_DIR}/config.fish" "Fish config"
+  link_file "${REPO_DIR}/fish/conf.d/path.fish" "${FISH_CONFIG_DIR}/conf.d/path.fish" "Fish PATH config"
   link_file "${REPO_DIR}/fish/conf.d/rust-tools.fish" "${FISH_CONFIG_DIR}/conf.d/rust-tools.fish" "Fish rust-tools config"
 
   ensure_line_in_file "${FISH_CONFIG_DIR}/fish_plugins" "jorgebucaran/fisher"
@@ -282,6 +290,7 @@ PY
 
 main() {
   install_runtime_deps
+  ensure_user_bin_dirs_in_path
   install_fish
   install_nerd_fonts
   write_fish_config

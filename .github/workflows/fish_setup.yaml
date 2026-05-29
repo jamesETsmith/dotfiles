@@ -78,6 +78,11 @@ jobs:
               exit 1
             fi
 
+            if [[ "$(readlink "${HOME}/.config/fish/conf.d/path.fish")" != "${GITHUB_WORKSPACE}/fish/conf.d/path.fish" ]]; then
+              echo "FAIL: path.fish does not point to repo config"
+              exit 1
+            fi
+
             if [[ "$(readlink "${HOME}/.config/fish/conf.d/rust-tools.fish")" != "${GITHUB_WORKSPACE}/fish/conf.d/rust-tools.fish" ]]; then
               echo "FAIL: rust-tools.fish does not point to repo config"
               exit 1
@@ -97,6 +102,17 @@ jobs:
                 exit 1
               fi
               echo "OK: ${setting}"
+            done
+          '
+      - name: Verify PATH includes user bin dirs
+        run: |
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify PATH includes user bin dirs" bash -c '
+            for dir in "${HOME}/.local/bin" "${HOME}/.cargo/bin"; do
+              if ! fish -c "contains ${dir} \$PATH; or exit 1" </dev/null; then
+                echo "FAIL: ${dir} not in fish PATH"
+                exit 1
+              fi
+              echo "OK: ${dir} in fish PATH"
             done
           '
       - name: Verify setup is idempotent

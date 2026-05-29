@@ -31,12 +31,12 @@ user's explicit approval before scaffolding anything under
 
 ## Inputs and outputs
 
-| Artifact | Path | Direction |
-|---|---|---|
-| Crush session DB | `~/.crush/crush.db` | read-only |
-| Last-audit timestamp | `~/.agents/state/session-skill-miner/last_audit` | read+write |
-| Audit report | `.agents/summaries/session-skill-miner/YYYY-MM-DD-audit.md` | write |
-| New skill scaffolds | `~/.agents/skills/<skill-name>/SKILL.md` | write — only after user approves |
+| Artifact             | Path                                                        | Direction                        |
+| -------------------- | ----------------------------------------------------------- | -------------------------------- |
+| Crush session DB     | `~/.crush/crush.db`                                         | read-only                        |
+| Last-audit timestamp | `~/.agents/state/session-skill-miner/last_audit`            | read+write                       |
+| Audit report         | `.agents/summaries/session-skill-miner/YYYY-MM-DD-audit.md` | write                            |
+| New skill scaffolds  | `~/.agents/skills/<skill-name>/SKILL.md`                    | write — only after user approves |
 
 The helper script lives next to this file at
 `scripts/extract_sessions.py` and is the only thing that touches the DB.
@@ -52,13 +52,13 @@ python3 "$SKILL_DIR/scripts/extract_sessions.py" --min-messages 4 > /tmp/session
 
 Useful flags:
 
-| Flag | Effect |
-|---|---|
-| `--since 0` | Force a full re-scan of every session in the DB (ignore stored last-audit timestamp). |
-| `--since <epoch_s>` | Audit only sessions whose `updated_at` is newer than this many seconds since the Unix epoch. |
-| `--min-messages N` | Skip sessions shorter than `N` messages (default `4`). Trivial sessions rarely reveal workflows. |
-| `--include-current` | Include the in-progress session. Off by default so the audit doesn't analyze itself. |
-| `--mark` | After the audit completes, update the last-audit timestamp. **Only pass this once the user has accepted/rejected the proposals** — otherwise re-runs would silently skip the same sessions. |
+| Flag                | Effect                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--since 0`         | Force a full re-scan of every session in the DB (ignore stored last-audit timestamp).                                                                                                       |
+| `--since <epoch_s>` | Audit only sessions whose `updated_at` is newer than this many seconds since the Unix epoch.                                                                                                |
+| `--min-messages N`  | Skip sessions shorter than `N` messages (default `4`). Trivial sessions rarely reveal workflows.                                                                                            |
+| `--include-current` | Include the in-progress session. Off by default so the audit doesn't analyze itself.                                                                                                        |
+| `--mark`            | After the audit completes, update the last-audit timestamp. **Only pass this once the user has accepted/rejected the proposals** — otherwise re-runs would silently skip the same sessions. |
 
 Each non-meta line of the output is a JSON object with the session
 title, user prompts (truncated), and the ordered tool-call sequence
