@@ -1,3 +1,4 @@
 if status is-interactive
-  # Commands to run in interactive sessions can go here
+  # Add user tool directories to PATH.
+  fish_add_path -m $HOME/.local/bin $HOME/.cargo/bin
 end

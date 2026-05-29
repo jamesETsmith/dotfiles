@@ -29,9 +29,9 @@ declare -A RUST_TOOL_COMMANDS=(
   [hyperfine]=hyperfine
   [sd]=sd
   [tokei]=tokei
-  [git - delta]=delta
+  ["git-delta"]=delta
   [zellij]=zellij
-  [yazi - build]=yazi
+  ["yazi-build"]=yazi
 )
 
 log() {
@@ -186,10 +186,13 @@ install_rust_tools() {
   done
 }
 
-ensure_cargo_bin_in_path_or_zshrc() {
+ensure_cargo_bin_in_path_or_shell_rcs() {
   local cargo_bin="${HOME}/.cargo/bin"
   local zshrc_path="${HOME}/.zshrc"
-  local cargo_path_snippet="export PATH=\"\$HOME/.cargo/bin:\$PATH\""
+  local cargo_path_zsh="export PATH=\"\$HOME/.cargo/bin:\$PATH\""
+  local fish_config_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/fish"
+  local fish_config_path="${fish_config_dir}/config.fish"
+  local cargo_path_fish="fish_add_path -m \$HOME/.cargo/bin"
 
   if [[ ":${PATH}:" == *":${cargo_bin}:"* ]]; then
     log "cargo bin directory already present in current PATH."
@@ -198,19 +201,30 @@ ensure_cargo_bin_in_path_or_zshrc() {
     log "Added ${cargo_bin} to current PATH for this session."
   fi
 
-  if [[ ! -f "${zshrc_path}" ]]; then
-    printf '%s\n' "${cargo_path_snippet}" >"${zshrc_path}"
+  # Update zshrc
+  if [[ -f "${zshrc_path}" ]]; then
+    if ! rg -q '(\.cargo/bin|\.cargo/env)' "${zshrc_path}"; then
+      printf '\n%s\n' "${cargo_path_zsh}" >>"${zshrc_path}"
+      log "Added cargo PATH snippet to ${zshrc_path}."
+    else
+      log "Cargo PATH setup already present in ${zshrc_path}."
+    fi
+  else
+    printf '%s\n' "${cargo_path_zsh}" >"${zshrc_path}"
     log "Created ${zshrc_path} with cargo PATH snippet."
-    return
   fi
 
-  if rg -q '(\.cargo/bin|\.cargo/env)' "${zshrc_path}"; then
-    log "Cargo PATH setup already present in ${zshrc_path}."
-    return
+  # Update fish config if it exists or if fish is installed
+  if command -v fish >/dev/null 2>&1 || [[ -d "${fish_config_dir}" ]]; then
+    mkdir -p "${fish_config_dir}"
+    touch "${fish_config_path}"
+    if ! rg -q '\.cargo/bin' "${fish_config_path}"; then
+      printf '\nif status is-interactive\n  %s\nend\n' "${cargo_path_fish}" >>"${fish_config_path}"
+      log "Added cargo PATH snippet to ${fish_config_path}."
+    else
+      log "Cargo PATH setup already present in ${fish_config_path}."
+    fi
   fi
-
-  printf '\n%s\n' "${cargo_path_snippet}" >>"${zshrc_path}"
-  log "Added cargo PATH snippet to ${zshrc_path}."
 }
 
 write_file_if_missing() {
@@ -350,7 +364,7 @@ main() {
   fi
 
   install_rust
-  ensure_cargo_bin_in_path_or_zshrc
+  ensure_cargo_bin_in_path_or_shell_rcs
   install_rust_tools
   configure_ripgrep
   configure_bat
