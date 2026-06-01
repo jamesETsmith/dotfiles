@@ -29,7 +29,7 @@ repos:
       - id: detect-secrets
         args:
           - --exclude-files
-          - (^|/)\.zshrc\.local$
+          - (^|/)(\.zshrc\.local|config\.local\.fish)$
           - --exclude-lines
           - ^SETUVAR tide_pwd_
   - repo: https://github.com/google/yamlfmt

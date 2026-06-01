@@ -58,7 +58,7 @@ If pre-commit modifies files (formatters like `shfmt`, `yamlfmt`, `beautysh`, `e
 ### Secrets
 
 - Never commit credentials, tokens, or private keys. The `detect-secrets` and `detect-private-key` hooks will block this.
-- Machine-specific or secret values belong in `~/.zshrc.local`, which is excluded from the repo.
+- Machine-specific or secret values belong in `~/.zshrc.local` or `~/.config/fish/config.local.fish`, which are excluded from the repo.
 
 ### CI
 
