@@ -88,6 +88,11 @@ jobs:
               exit 1
             fi
 
+            if [[ "$(readlink "${HOME}/.config/fish/conf.d/setup-hooks.fish")" != "${GITHUB_WORKSPACE}/fish/conf.d/setup-hooks.fish" ]]; then
+              echo "FAIL: setup-hooks.fish does not point to repo config"
+              exit 1
+            fi
+
             for plugin in jorgebucaran/fisher ilancosman/tide@v6; do
               if ! grep -Eq "^${plugin}$" "${HOME}/.config/fish/fish_plugins"; then
                 echo "FAIL: ${plugin} missing from fish_plugins"
@@ -114,6 +119,15 @@ jobs:
               fi
               echo "OK: ${dir} in fish PATH"
             done
+          '
+      - name: Verify Tide prompt loads
+        run: |
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Tide prompt loads" bash -c '
+            if ! script -q -c "fish -i -c \"functions fish_prompt | rg -q _tide_2_line_prompt; and fish_prompt\"" /dev/null; then
+              echo "FAIL: Tide prompt failed to render"
+              exit 1
+            fi
+            echo "OK: Tide prompt rendered"
           '
       - name: Verify setup is idempotent
         run: |

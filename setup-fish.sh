@@ -196,10 +196,12 @@ link_file() {
   local source_path="$1"
   local target_path="$2"
   local description="$3"
+  local had_link=0
 
   mkdir -p "$(dirname "${target_path}")"
 
   if [[ -L "${target_path}" ]]; then
+    had_link=1
     local current_target
     current_target="$(readlink "${target_path}")"
     if [[ "${current_target}" == "${source_path}" ]]; then
@@ -215,6 +217,10 @@ link_file() {
 
   ln -sfn "${source_path}" "${target_path}"
   log "Linked ${description} to ${source_path}."
+
+  if [[ "${target_path}" == *"/conf.d/setup-hooks.fish" && "${had_link}" -eq 0 ]]; then
+    SETUP_HOOKS_NEWLY_LINKED=1
+  fi
 }
 
 ensure_line_in_file() {
@@ -231,15 +237,20 @@ ensure_line_in_file() {
 }
 
 write_fish_config() {
+  SETUP_HOOKS_NEWLY_LINKED=0
+
   link_file "${REPO_DIR}/fish/config.fish" "${FISH_CONFIG_DIR}/config.fish" "Fish config"
   link_file "${REPO_DIR}/fish/conf.d/path.fish" "${FISH_CONFIG_DIR}/conf.d/path.fish" "Fish PATH config"
   link_file "${REPO_DIR}/fish/conf.d/rust-tools.fish" "${FISH_CONFIG_DIR}/conf.d/rust-tools.fish" "Fish rust-tools config"
+  link_file "${REPO_DIR}/fish/conf.d/setup-hooks.fish" "${FISH_CONFIG_DIR}/conf.d/setup-hooks.fish" "Fish setup hooks"
 
   ensure_line_in_file "${FISH_CONFIG_DIR}/fish_plugins" "jorgebucaran/fisher"
   ensure_line_in_file "${FISH_CONFIG_DIR}/fish_plugins" "${TIDE_PLUGIN}"
 }
 
 install_fisher_and_tide() {
+  FISHER_TIDE_INSTALLED=0
+
   if fish -c "functions -q fisher; and functions -q tide" </dev/null; then
     log "Fisher and Tide already installed."
     return
@@ -252,6 +263,39 @@ install_fisher_and_tide() {
     end
     fisher install jorgebucaran/fisher ${TIDE_PLUGIN}
   " </dev/null
+  FISHER_TIDE_INSTALLED=1
+}
+
+is_interactive_fish_parent() {
+  [[ -t 1 ]] || return 1
+  local parent_comm
+  parent_comm="$(ps -o comm= -p "${PPID}" 2>/dev/null | tr -d ' ')"
+  [[ "${parent_comm}" == *fish* ]]
+}
+
+queue_fish_session_refresh() {
+  mkdir -p "${FISH_CONFIG_DIR}"
+  : >"${FISH_CONFIG_DIR}/.dotfiles-setup-reload"
+
+  if is_interactive_fish_parent; then
+    log "Will refresh this fish session when setup finishes."
+    if [[ "${SETUP_HOOKS_NEWLY_LINKED:-0}" -eq 1 ]]; then
+      log "Setup hooks were just installed; run: exec fish"
+    fi
+  else
+    log "Start a new fish session (or run: exec fish) to load prompt changes."
+  fi
+}
+
+reload_tide_prompt() {
+  if ! fish -c "functions -q tide" </dev/null 2>&1; then
+    log "Tide not installed; skipping prompt reload."
+    return
+  fi
+
+  if [[ "${TIDE_CONFIG_CHANGED:-}" == "1" || "${FISHER_TIDE_INSTALLED:-0}" -eq 1 ]]; then
+    queue_fish_session_refresh
+  fi
 }
 
 apply_tide_config() {
@@ -259,7 +303,8 @@ apply_tide_config() {
   local target_path="${FISH_CONFIG_DIR}/fish_variables"
 
   mkdir -p "${FISH_CONFIG_DIR}"
-  python3 - "${source_path}" "${target_path}" <<'PY'
+  TIDE_CONFIG_CHANGED="$(
+    python3 - "${source_path}" "${target_path}" <<'PY'
 from pathlib import Path
 import sys
 
@@ -280,6 +325,7 @@ def is_tide_setting(line: str) -> bool:
         line.startswith("SETUVAR tide_")
         or line.startswith("SETUVAR _tide_left_items:")
         or line.startswith("SETUVAR _tide_right_items:")
+        or line.startswith("SETUVAR _tide_prompt_")
     )
 
 merged_lines = [line for line in existing_lines if not is_tide_setting(line)]
@@ -289,11 +335,19 @@ merged_lines.extend(tide_lines)
 merged_text = "\n".join(merged_lines) + "\n"
 
 if target_path.exists() and target_path.read_text(encoding="utf-8") == merged_text:
-    raise SystemExit(0)
-
-target_path.write_text(merged_text, encoding="utf-8")
+    print("0")
+else:
+    target_path.write_text(merged_text, encoding="utf-8")
+    print("1")
 PY
-  log "Applied Tide universal variable config to ${target_path}."
+  )"
+
+  if [[ "${TIDE_CONFIG_CHANGED}" == "1" ]]; then
+    log "Applied Tide universal variable config to ${target_path}."
+  else
+    log "Tide universal variable config already up to date at ${target_path}."
+    TIDE_CONFIG_CHANGED=""
+  fi
 }
 
 main() {
@@ -302,9 +356,9 @@ main() {
   install_fish
   install_nerd_fonts
   write_fish_config
-  apply_tide_config
   install_fisher_and_tide
   apply_tide_config
+  reload_tide_prompt
 
   log "Fish setup complete."
 }
