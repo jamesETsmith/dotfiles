@@ -23,6 +23,7 @@ jobs:
             /tmp/dotfiles-fish-home/.cargo/registry
             /tmp/dotfiles-fish-home/.cargo/git
             /tmp/dotfiles-fish-home/.cargo/bin
+            /tmp/dotfiles-fish-home/.rustup
           key: fish-cargo-v1-${{ hashFiles('setup-fish.sh', '.github/workflows/fish_setup.yaml') }}
           restore-keys: |
             fish-cargo-v1-

@@ -171,23 +171,29 @@ install_runtime_deps() {
 }
 
 ensure_cargo_in_path() {
-  if command -v cargo >/dev/null 2>&1; then
-    return
-  fi
-
   if [[ -f "${HOME}/.cargo/env" ]]; then
     # shellcheck disable=SC1091
     source "${HOME}/.cargo/env"
   fi
 
-  if ! command -v cargo >/dev/null 2>&1; then
-    log "Installing rustup and stable Rust for cargo..."
-    curl --proto '=https' --tlsv1.2 -fsSL "${RUSTUP_INIT_URL}" | sh -s -- -y --profile minimal --default-toolchain stable
-    # shellcheck disable=SC1091
-    source "${HOME}/.cargo/env"
+  if command -v cargo >/dev/null 2>&1 && cargo --version >/dev/null 2>&1; then
+    return
   fi
 
-  if ! command -v cargo >/dev/null 2>&1; then
+  if command -v rustup >/dev/null 2>&1; then
+    log "Repairing rustup stable toolchain for cargo..."
+    rustup default stable
+    if cargo --version >/dev/null 2>&1; then
+      return
+    fi
+  fi
+
+  log "Installing rustup and stable Rust for cargo..."
+  curl --proto '=https' --tlsv1.2 -fsSL "${RUSTUP_INIT_URL}" | sh -s -- -y --profile minimal --default-toolchain stable
+  # shellcheck disable=SC1091
+  source "${HOME}/.cargo/env"
+
+  if ! cargo --version >/dev/null 2>&1; then
     log "cargo is still not available in PATH."
     exit 1
   fi
