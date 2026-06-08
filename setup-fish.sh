@@ -8,6 +8,11 @@ SCRIPT_NAME="$(basename "$0")"
 DOTFILES_GIT_URL="https://github.com/jamesETsmith/dotfiles.git"
 DOTFILES_BRANCH="main"
 DOTFILES_CACHE_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/dotfiles"
+# BASH_SOURCE[0] is unset when the script is piped into bash (curl | bash).
+SCRIPT_PATH="${BASH_SOURCE[0]:-}"
+if [[ "${SCRIPT_PATH}" != /* || ! -f "${SCRIPT_PATH}" ]]; then
+  SCRIPT_PATH=""
+fi
 REPO_DIR=""
 CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
 FISH_CONFIG_DIR="${CONFIG_HOME}/fish"
@@ -47,11 +52,10 @@ fish_config_files_present() {
 }
 
 resolve_repo_dir() {
-  local script_path="${BASH_SOURCE[0]}"
   local candidate_dir
 
-  if [[ -f "${script_path}" ]]; then
-    candidate_dir="$(cd "$(dirname "${script_path}")" && pwd)"
+  if [[ -n "${SCRIPT_PATH}" ]]; then
+    candidate_dir="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
     if fish_config_files_present "${candidate_dir}"; then
       REPO_DIR="${candidate_dir}"
       return
@@ -79,6 +83,13 @@ resolve_repo_dir() {
   fi
 
   REPO_DIR="${DOTFILES_CACHE_DIR}"
+}
+
+ensure_repo_dir() {
+  if [[ -z "${REPO_DIR}" ]] || ! fish_config_files_present "${REPO_DIR}"; then
+    log "Dotfiles repo directory is not configured."
+    exit 1
+  fi
 }
 
 detect_pkg_manager() {
@@ -413,6 +424,7 @@ PY
 
 main() {
   resolve_repo_dir
+  ensure_repo_dir
   install_runtime_deps
   ensure_user_bin_dirs_in_path
   install_fish
