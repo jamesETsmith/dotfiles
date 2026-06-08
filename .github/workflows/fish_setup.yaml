@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FISH_TEST_HOME: /tmp/dotfiles-fish-home
+      XDG_CONFIG_HOME: /tmp/dotfiles-fish-home/.config
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

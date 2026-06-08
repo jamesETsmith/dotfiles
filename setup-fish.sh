@@ -10,7 +10,9 @@ DOTFILES_BRANCH="main"
 DOTFILES_CACHE_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/dotfiles"
 # BASH_SOURCE[0] is unset when the script is piped into bash (curl | bash).
 SCRIPT_PATH="${BASH_SOURCE[0]:-}"
-if [[ "${SCRIPT_PATH}" != /* || ! -f "${SCRIPT_PATH}" ]]; then
+if [[ -n "${SCRIPT_PATH}" && -f "${SCRIPT_PATH}" ]]; then
+  SCRIPT_PATH="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)/$(basename "${SCRIPT_PATH}")"
+else
   SCRIPT_PATH=""
 fi
 REPO_DIR=""
