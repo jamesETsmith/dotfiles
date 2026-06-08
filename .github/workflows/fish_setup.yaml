@@ -58,6 +58,16 @@ jobs:
               echo "OK: ${path}"
             done
           '
+      - name: Verify uv install
+        run: |
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.local/bin:${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify uv install" bash -c '
+            if ! command -v uv >/dev/null 2>&1; then
+              echo "FAIL: uv not found on PATH"
+              exit 1
+            fi
+
+            uv --version
+          '
       - name: Verify Fisher and Tide
         run: |
           HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Fisher and Tide" bash -c '
@@ -87,6 +97,11 @@ jobs:
 
             if [[ "$(readlink "${HOME}/.config/fish/conf.d/rust-tools.fish")" != "${GITHUB_WORKSPACE}/fish/conf.d/rust-tools.fish" ]]; then
               echo "FAIL: rust-tools.fish does not point to repo config"
+              exit 1
+            fi
+
+            if [[ "$(readlink "${HOME}/.config/fish/conf.d/uv.fish")" != "${GITHUB_WORKSPACE}/fish/conf.d/uv.fish" ]]; then
+              echo "FAIL: uv.fish does not point to repo config"
               exit 1
             fi
 
@@ -121,6 +136,21 @@ jobs:
               fi
               echo "OK: ${dir} in fish PATH"
             done
+          '
+      - name: Verify bashrc launches fish
+        run: |
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.local/bin:${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify bashrc launches fish" bash -c '
+            if ! grep -Fq "# >>> dotfiles fish setup >>>" "${HOME}/.bashrc"; then
+              echo "FAIL: fish startup block missing from .bashrc"
+              exit 1
+            fi
+
+            if ! grep -Fq "command -v fish" "${HOME}/.bashrc"; then
+              echo "FAIL: fish startup guard missing from .bashrc"
+              exit 1
+            fi
+
+            echo "OK: .bashrc fish startup block"
           '
       - name: Verify Tide prompt loads
         run: |

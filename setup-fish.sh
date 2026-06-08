@@ -42,6 +42,7 @@ fish_config_files_present() {
     "fish/config.fish"
     "fish/conf.d/path.fish"
     "fish/conf.d/rust-tools.fish"
+    "fish/conf.d/uv.fish"
     "fish/conf.d/setup-hooks.fish"
     "fish/fish_variables.tide"
   )
@@ -240,6 +241,17 @@ install_fish() {
   ensure_user_bin_dirs_in_path
 }
 
+install_uv() {
+  if command -v uv >/dev/null 2>&1; then
+    log "uv already installed."
+    return
+  fi
+
+  log "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ensure_user_bin_dirs_in_path
+}
+
 install_nerd_fonts() {
   local font_file
   local font_url
@@ -317,6 +329,7 @@ write_fish_config() {
   link_file "${REPO_DIR}/fish/config.fish" "${FISH_CONFIG_DIR}/config.fish" "Fish config"
   link_file "${REPO_DIR}/fish/conf.d/path.fish" "${FISH_CONFIG_DIR}/conf.d/path.fish" "Fish PATH config"
   link_file "${REPO_DIR}/fish/conf.d/rust-tools.fish" "${FISH_CONFIG_DIR}/conf.d/rust-tools.fish" "Fish rust-tools config"
+  link_file "${REPO_DIR}/fish/conf.d/uv.fish" "${FISH_CONFIG_DIR}/conf.d/uv.fish" "Fish uv config"
   link_file "${REPO_DIR}/fish/conf.d/setup-hooks.fish" "${FISH_CONFIG_DIR}/conf.d/setup-hooks.fish" "Fish setup hooks"
 
   ensure_line_in_file "${FISH_CONFIG_DIR}/fish_plugins" "jorgebucaran/fisher"
@@ -430,6 +443,69 @@ PY
   fi
 }
 
+configure_bashrc() {
+  local bashrc_path="${HOME}/.bashrc"
+  local bashrc_changed
+
+  mkdir -p "$(dirname "${bashrc_path}")"
+  touch "${bashrc_path}"
+
+  bashrc_changed="$(
+    python3 - "${bashrc_path}" "${SCRIPT_NAME}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+script_name = sys.argv[2]
+start_marker = "# >>> dotfiles fish setup >>>"
+end_marker = "# <<< dotfiles fish setup <<<"
+block_lines = [
+    start_marker,
+    f"# Added by {script_name}: start fish for interactive bash sessions.",
+    "if [[ $- == *i* ]] && command -v fish >/dev/null 2>&1; then",
+    "  exec fish",
+    "fi",
+    end_marker,
+]
+block = "\n".join(block_lines) + "\n"
+
+existing_text = path.read_text(encoding="utf-8") if path.exists() else ""
+lines = existing_text.splitlines(keepends=True)
+filtered_lines = []
+in_block = False
+
+for line in lines:
+    stripped = line.rstrip("\n")
+    if stripped == start_marker:
+        in_block = True
+        continue
+    if stripped == end_marker:
+        in_block = False
+        continue
+    if not in_block:
+        filtered_lines.append(line)
+
+base_text = "".join(filtered_lines).rstrip("\n")
+if base_text:
+    merged_text = base_text + "\n\n" + block
+else:
+    merged_text = block
+
+if existing_text == merged_text:
+    print("0")
+else:
+    path.write_text(merged_text, encoding="utf-8")
+    print("1")
+PY
+  )"
+
+  if [[ "${bashrc_changed}" == "1" ]]; then
+    log "Added fish startup block to ${bashrc_path}."
+  else
+    log "Fish startup block already up to date in ${bashrc_path}."
+  fi
+}
+
 main() {
   resolve_repo_dir
   ensure_repo_dir
@@ -437,10 +513,12 @@ main() {
   ensure_user_bin_dirs_in_path
   install_fish
   install_nerd_fonts
+  install_uv
   write_fish_config
   install_fisher_and_tide
   apply_tide_config
   reload_tide_prompt
+  configure_bashrc
 
   log "Fish setup complete."
 }
