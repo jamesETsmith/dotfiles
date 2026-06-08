@@ -5,7 +5,10 @@ set -euo pipefail
 # Usage: ./setup-fish.sh
 
 SCRIPT_NAME="$(basename "$0")"
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DOTFILES_GIT_URL="https://github.com/jamesETsmith/dotfiles.git"
+DOTFILES_BRANCH="main"
+DOTFILES_CACHE_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/dotfiles"
+REPO_DIR=""
 CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
 FISH_CONFIG_DIR="${CONFIG_HOME}/fish"
 RUSTUP_INIT_URL="https://sh.rustup.rs"
@@ -23,6 +26,59 @@ NERD_FONT_FILES=(
 
 log() {
   printf '[%s] %s\n' "${SCRIPT_NAME}" "$*"
+}
+
+fish_config_files_present() {
+  local repo_dir="$1"
+  local relative_path
+  local required_files=(
+    "fish/config.fish"
+    "fish/conf.d/path.fish"
+    "fish/conf.d/rust-tools.fish"
+    "fish/conf.d/setup-hooks.fish"
+    "fish/fish_variables.tide"
+  )
+
+  for relative_path in "${required_files[@]}"; do
+    if [[ ! -f "${repo_dir}/${relative_path}" ]]; then
+      return 1
+    fi
+  done
+}
+
+resolve_repo_dir() {
+  local script_path="${BASH_SOURCE[0]}"
+  local candidate_dir
+
+  if [[ -f "${script_path}" ]]; then
+    candidate_dir="$(cd "$(dirname "${script_path}")" && pwd)"
+    if fish_config_files_present "${candidate_dir}"; then
+      REPO_DIR="${candidate_dir}"
+      return
+    fi
+  fi
+
+  if fish_config_files_present "${DOTFILES_CACHE_DIR}"; then
+    REPO_DIR="${DOTFILES_CACHE_DIR}"
+    return
+  fi
+
+  log "Fetching dotfiles repo for Fish config..."
+  if [[ -d "${DOTFILES_CACHE_DIR}/.git" ]]; then
+    git -C "${DOTFILES_CACHE_DIR}" fetch --depth 1 origin "${DOTFILES_BRANCH}"
+    git -C "${DOTFILES_CACHE_DIR}" checkout "${DOTFILES_BRANCH}"
+    git -C "${DOTFILES_CACHE_DIR}" reset --hard "origin/${DOTFILES_BRANCH}"
+  else
+    mkdir -p "$(dirname "${DOTFILES_CACHE_DIR}")"
+    git clone --depth 1 --branch "${DOTFILES_BRANCH}" "${DOTFILES_GIT_URL}" "${DOTFILES_CACHE_DIR}"
+  fi
+
+  if ! fish_config_files_present "${DOTFILES_CACHE_DIR}"; then
+    log "Fish config files missing after fetching dotfiles repo."
+    exit 1
+  fi
+
+  REPO_DIR="${DOTFILES_CACHE_DIR}"
 }
 
 detect_pkg_manager() {
@@ -302,6 +358,11 @@ apply_tide_config() {
   local source_path="${REPO_DIR}/fish/fish_variables.tide"
   local target_path="${FISH_CONFIG_DIR}/fish_variables"
 
+  if [[ ! -f "${source_path}" ]]; then
+    log "Tide config source not found at ${source_path}."
+    exit 1
+  fi
+
   mkdir -p "${FISH_CONFIG_DIR}"
   TIDE_CONFIG_CHANGED="$(
     python3 - "${source_path}" "${target_path}" <<'PY'
@@ -351,6 +412,7 @@ PY
 }
 
 main() {
+  resolve_repo_dir
   install_runtime_deps
   ensure_user_bin_dirs_in_path
   install_fish
