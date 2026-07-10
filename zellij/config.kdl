@@ -270,7 +270,7 @@ plugins {
 load_plugins {
 }
 web_client {
-    font "monospace"
+    font "MesloLGS NF"
 }
 
 // Use a simplified UI without special fonts (arrow glyphs)

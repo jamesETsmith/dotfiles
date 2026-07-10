@@ -339,10 +339,73 @@ install_nerd_fonts() {
     installed_any=1
   done
 
-  if [[ "${installed_any}" -eq 1 ]] && command -v fc-cache >/dev/null 2>&1; then
+  if command -v fc-cache >/dev/null 2>&1; then
     log "Refreshing font cache..."
     fc-cache -f "${FONT_DIR}"
   fi
+}
+
+configure_terminal_fonts() {
+  local font_family="MesloLGS NF"
+  local font_size=12
+  local profile_uuid
+  local settings_path
+  local settings_changed
+
+  if command -v gsettings >/dev/null 2>&1; then
+    profile_uuid="$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'" || true)"
+    if [[ -n "${profile_uuid}" ]]; then
+      gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/" use-system-font false
+      gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/" font "${font_family} ${font_size}"
+      log "Set gnome-terminal font to ${font_family} ${font_size}."
+    fi
+  fi
+
+  for settings_path in \
+    "${CONFIG_HOME}/Cursor/User/settings.json" \
+    "${CONFIG_HOME}/Code/User/settings.json"; do
+    settings_changed="$(
+      python3 - "${settings_path}" "${font_family}" "${font_size}" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+font_family = sys.argv[2]
+font_size = int(sys.argv[3])
+
+if not path.exists():
+    print("skip")
+    sys.exit(0)
+
+text = path.read_text(encoding="utf-8")
+payload = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+payload = re.sub(r"(^|[^:])//.*", r"\1", payload, flags=re.M)
+data = json.loads(payload or "{}")
+
+changed = False
+if data.get("terminal.integrated.fontFamily") != font_family:
+    data["terminal.integrated.fontFamily"] = font_family
+    changed = True
+if data.get("terminal.integrated.fontSize") != font_size:
+    data["terminal.integrated.fontSize"] = font_size
+    changed = True
+
+if not changed:
+    print("0")
+    sys.exit(0)
+
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(data, indent=4) + "\n", encoding="utf-8")
+print("1")
+PY
+    )"
+
+    if [[ "${settings_changed}" == "1" ]]; then
+      log "Set integrated terminal font in ${settings_path}."
+    fi
+  done
 }
 
 link_file() {
@@ -579,6 +642,7 @@ main() {
   ensure_user_bin_dirs_in_path
   install_fish
   install_nerd_fonts
+  configure_terminal_fonts
   install_uv
   write_fish_config
   install_fisher_and_tide
