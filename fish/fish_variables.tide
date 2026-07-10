@@ -1,5 +1,5 @@
 SETUVAR _tide_left_items:os\x1epwd\x1egit\x1enewline\x1echaracter
-SETUVAR _tide_right_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc\x1ejava\x1eruby\x1ego\x1etime
+SETUVAR _tide_right_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc\x1etime
 SETUVAR tide_aws_bg_color:normal
 SETUVAR tide_aws_color:FF9900
 SETUVAR tide_aws_icon:\uf270
@@ -114,7 +114,7 @@ SETUVAR tide_python_bg_color:normal
 SETUVAR tide_python_color:00AFAF
 SETUVAR tide_python_icon:\U000f0320
 SETUVAR tide_right_prompt_frame_enabled:false
-SETUVAR tide_right_prompt_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1edirenv\x1ebun\x1enode\x1epython\x1erustc\x1ejava\x1ephp\x1epulumi\x1eruby\x1ego\x1egcloud\x1edistrobox\x1etoolbox\x1eterraform\x1eaws\x1enix_shell\x1ecrystal\x1eelixir\x1ezig\x1etime
+SETUVAR tide_right_prompt_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc\x1etime
 SETUVAR tide_right_prompt_prefix:\x20
 SETUVAR tide_right_prompt_separator_diff_color:\x20
 SETUVAR tide_right_prompt_separator_same_color:\x20
@@ -140,7 +140,7 @@ SETUVAR tide_terraform_color:844FBA
 SETUVAR tide_terraform_icon:\U000f1062
 SETUVAR tide_time_bg_color:normal
 SETUVAR tide_time_color:5F8787
-SETUVAR tide_time_format:\x25T
+SETUVAR tide_time_format:\x25H\x3a\x25M
 SETUVAR tide_toolbox_bg_color:normal
 SETUVAR tide_toolbox_color:613583
 SETUVAR tide_toolbox_icon:\ue24f
