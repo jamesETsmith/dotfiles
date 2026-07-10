@@ -207,6 +207,35 @@ ensure_executable_tmpdir() {
   log "Using TMPDIR=${TMPDIR} because ${current_tmp} cannot execute binaries (noexec)."
 }
 
+resolve_cargo_target_dir() {
+  if [[ -n "${CARGO_TARGET_DIR:-}" ]]; then
+    printf '%s\n' "${CARGO_TARGET_DIR}"
+    return
+  fi
+  printf '%s\n' "${CARGO_HOME:-${HOME}/.cargo}/target"
+}
+
+ensure_executable_cargo_target_dir() {
+  local exec_target="${HOME}/.cache/cargo-target"
+  local current_target
+
+  current_target="$(resolve_cargo_target_dir)"
+
+  mkdir -p "${current_target}"
+  if can_execute_in_dir "${current_target}"; then
+    return
+  fi
+
+  mkdir -p "${exec_target}"
+  if ! can_execute_in_dir "${exec_target}"; then
+    log "No executable cargo target directory found (checked ${current_target} and ${exec_target})."
+    exit 1
+  fi
+
+  export CARGO_TARGET_DIR="${exec_target}"
+  log "Using CARGO_TARGET_DIR=${CARGO_TARGET_DIR} because ${current_target} cannot execute binaries (noexec)."
+}
+
 ensure_cargo_in_path() {
   if [[ -f "${HOME}/.cargo/env" ]]; then
     # shellcheck disable=SC1091
@@ -265,6 +294,8 @@ install_fish() {
   ensure_user_bin_dirs_in_path
 
   log "Installing fish from ${FISH_GIT_URL} with cargo..."
+  ensure_executable_tmpdir
+  ensure_executable_cargo_target_dir
   local temp_dir
   temp_dir="$(mktemp -d)"
   git clone --depth 1 "${FISH_GIT_URL}" "${temp_dir}"
