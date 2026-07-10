@@ -46,6 +46,10 @@ jobs:
         run: |
           HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Nerd Fonts" bash -c '
             for font in \
+              "HackNerdFontMono-Regular.ttf" \
+              "HackNerdFontMono-Bold.ttf" \
+              "HackNerdFontMono-Italic.ttf" \
+              "HackNerdFontMono-BoldItalic.ttf" \
               "MesloLGS NF Regular.ttf" \
               "MesloLGS NF Bold.ttf" \
               "MesloLGS NF Italic.ttf" \

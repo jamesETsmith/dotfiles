@@ -270,7 +270,7 @@ plugins {
 load_plugins {
 }
 web_client {
-    font "MesloLGS NF"
+    font "Hack Nerd Font Mono"
 }
 
 // Use a simplified UI without special fonts (arrow glyphs)

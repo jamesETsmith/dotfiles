@@ -23,12 +23,20 @@ FISH_GIT_URL="https://github.com/fish-shell/fish-shell"
 FISHER_INSTALL_URL="https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish"
 TIDE_PLUGIN="ilancosman/tide@v6"
 FONT_DIR="${HOME}/.local/share/fonts"
-NERD_FONT_BASE_URL="https://github.com/romkatv/powerlevel10k-media/raw/master"
-NERD_FONT_FILES=(
+TERMINAL_FONT_FAMILY="Hack Nerd Font Mono"
+MESLO_NERD_FONT_BASE_URL="https://github.com/romkatv/powerlevel10k-media/raw/master"
+MESLO_NERD_FONT_FILES=(
   "MesloLGS NF Regular.ttf"
   "MesloLGS NF Bold.ttf"
   "MesloLGS NF Italic.ttf"
   "MesloLGS NF Bold Italic.ttf"
+)
+HACK_NERD_FONT_RELEASE_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/Hack.zip"
+HACK_NERD_FONT_FILES=(
+  "HackNerdFontMono-Regular.ttf"
+  "HackNerdFontMono-Bold.ttf"
+  "HackNerdFontMono-Italic.ttf"
+  "HackNerdFontMono-BoldItalic.ttf"
 )
 
 log() {
@@ -142,6 +150,7 @@ install_runtime_deps() {
   command -v curl >/dev/null 2>&1 || needed+=(curl)
   command -v git >/dev/null 2>&1 || needed+=(git)
   command -v fc-cache >/dev/null 2>&1 || needed+=(fontconfig)
+  command -v unzip >/dev/null 2>&1 || needed+=(unzip)
 
   if [[ ${#needed[@]} -eq 0 ]]; then
     log "Fish runtime dependencies already installed."
@@ -318,39 +327,74 @@ install_uv() {
   ensure_user_bin_dirs_in_path
 }
 
-install_nerd_fonts() {
+install_meslo_nerd_fonts() {
   local font_file
   local font_url
   local target_path
-  local installed_any=0
 
   mkdir -p "${FONT_DIR}"
 
-  for font_file in "${NERD_FONT_FILES[@]}"; do
+  for font_file in "${MESLO_NERD_FONT_FILES[@]}"; do
     target_path="${FONT_DIR}/${font_file}"
     if [[ -f "${target_path}" ]]; then
       log "${font_file} already installed."
       continue
     fi
 
-    font_url="${NERD_FONT_BASE_URL}/${font_file// /%20}"
+    font_url="${MESLO_NERD_FONT_BASE_URL}/${font_file// /%20}"
     log "Installing ${font_file}..."
     curl -fL --connect-timeout 20 --max-time 120 -o "${target_path}" "${font_url}"
-    installed_any=1
   done
+}
+
+install_hack_nerd_fonts() {
+  local font_file
+  local target_path
+  local temp_dir
+  local missing=0
+
+  mkdir -p "${FONT_DIR}"
+
+  for font_file in "${HACK_NERD_FONT_FILES[@]}"; do
+    target_path="${FONT_DIR}/${font_file}"
+    if [[ ! -f "${target_path}" ]]; then
+      missing=1
+      break
+    fi
+  done
+
+  if [[ "${missing}" -eq 0 ]]; then
+    log "Hack Nerd Font Mono already installed."
+    return
+  fi
+
+  log "Installing Hack Nerd Font Mono from ${HACK_NERD_FONT_RELEASE_URL}..."
+  temp_dir="$(mktemp -d)"
+  curl -fL --connect-timeout 20 --max-time 120 -o "${temp_dir}/Hack.zip" "${HACK_NERD_FONT_RELEASE_URL}"
+  for font_file in "${HACK_NERD_FONT_FILES[@]}"; do
+    unzip -j -q "${temp_dir}/Hack.zip" "${font_file}" -d "${FONT_DIR}"
+    log "Installed ${font_file}."
+  done
+  rm -rf "${temp_dir}"
+}
+
+install_nerd_fonts() {
+  install_hack_nerd_fonts
+  install_meslo_nerd_fonts
 
   if command -v fc-cache >/dev/null 2>&1; then
     log "Refreshing font cache..."
     fc-cache -f "${FONT_DIR}"
-    if [[ -f "${CONFIG_HOME}/fontconfig/conf.d/50-meslo-nerd-font.conf" ]]; then
+    if [[ -f "${CONFIG_HOME}/fontconfig/conf.d/50-terminal-nerd-font.conf" ]]; then
       fc-cache -f
     fi
   fi
 }
 
 install_fontconfig_snippet() {
-  local source_path="${REPO_DIR}/fontconfig/50-meslo-nerd-font.conf"
-  local target_path="${CONFIG_HOME}/fontconfig/conf.d/50-meslo-nerd-font.conf"
+  local source_path="${REPO_DIR}/fontconfig/50-terminal-nerd-font.conf"
+  local target_path="${CONFIG_HOME}/fontconfig/conf.d/50-terminal-nerd-font.conf"
+  local legacy_path="${CONFIG_HOME}/fontconfig/conf.d/50-meslo-nerd-font.conf"
 
   if [[ ! -f "${source_path}" ]]; then
     log "Skipping fontconfig snippet; ${source_path} not found."
@@ -358,6 +402,7 @@ install_fontconfig_snippet() {
   fi
 
   mkdir -p "$(dirname "${target_path}")"
+  rm -f "${legacy_path}"
   if [[ -L "${target_path}" || -f "${target_path}" ]]; then
     if [[ -L "${target_path}" && "$(readlink "${target_path}")" == "${source_path}" ]]; then
       log "Fontconfig snippet already linked."
@@ -367,7 +412,7 @@ install_fontconfig_snippet() {
   fi
 
   ln -s "${source_path}" "${target_path}"
-  log "Installed fontconfig snippet for MesloLGS NF."
+  log "Installed fontconfig snippet for ${TERMINAL_FONT_FAMILY}."
 }
 
 gnome_terminal_dbus_address() {
@@ -446,7 +491,7 @@ configure_gnome_terminal_profile() {
 }
 
 configure_terminal_fonts() {
-  local font_family="MesloLGS NF"
+  local font_family="${TERMINAL_FONT_FAMILY}"
   local font_size=12
   local font_setting="${font_family} Regular ${font_size}"
   local profile_uuid
