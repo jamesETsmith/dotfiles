@@ -1,5 +1,5 @@
 SETUVAR _tide_left_items:os\x1epwd\x1egit\x1enewline\x1echaracter
-SETUVAR _tide_right_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc\x1etime
+SETUVAR _tide_right_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc
 SETUVAR tide_aws_bg_color:normal
 SETUVAR tide_aws_color:FF9900
 SETUVAR tide_aws_icon:\uf270
@@ -114,7 +114,7 @@ SETUVAR tide_python_bg_color:normal
 SETUVAR tide_python_color:00AFAF
 SETUVAR tide_python_icon:\U000f0320
 SETUVAR tide_right_prompt_frame_enabled:false
-SETUVAR tide_right_prompt_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc\x1etime
+SETUVAR tide_right_prompt_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc
 SETUVAR tide_right_prompt_prefix:\x20
 SETUVAR tide_right_prompt_separator_diff_color:\x20
 SETUVAR tide_right_prompt_separator_same_color:\x20
