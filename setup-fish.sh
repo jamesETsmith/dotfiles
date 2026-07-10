@@ -370,11 +370,58 @@ install_fontconfig_snippet() {
   log "Installed fontconfig snippet for MesloLGS NF."
 }
 
+gnome_terminal_dbus_address() {
+  if [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+    printf '%s\n' "${DBUS_SESSION_BUS_ADDRESS}"
+    return
+  fi
+
+  local uid bus_path
+  uid="$(id -u)"
+  for bus_path in "/run/user/${uid}/bus" "/var/run/user/${uid}/bus"; do
+    if [[ -S "${bus_path}" ]]; then
+      printf 'unix:path=%s\n' "${bus_path}"
+      return
+    fi
+  done
+
+  return 1
+}
+
+verify_gnome_terminal_profile() {
+  local profile_uuid="$1"
+  local font_setting="$2"
+  local profile_schema="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/"
+  local dbus_address
+  local use_system_font current_font ambiguous_width
+
+  dbus_address="$(gnome_terminal_dbus_address)" || return 1
+
+  use_system_font="$(
+    DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
+      gsettings get "${profile_schema}" use-system-font 2>/dev/null || true
+  )"
+  current_font="$(
+    DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
+      gsettings get "${profile_schema}" font 2>/dev/null || true
+  )"
+  ambiguous_width="$(
+    DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
+      gsettings get "${profile_schema}" cjk-utf8-ambiguous-width 2>/dev/null || true
+  )"
+
+  [[ "${use_system_font}" == "false" ]] || return 1
+  [[ "${current_font}" == "'${font_setting}'" ]] || return 1
+  [[ "${ambiguous_width}" == "'wide'" ]] || return 1
+}
+
 configure_gnome_terminal_profile() {
   local profile_uuid="$1"
   local font_setting="$2"
   local profile_schema="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/"
-  local dbus_address="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"
+  local dbus_address
+
+  dbus_address="$(gnome_terminal_dbus_address)" || return 1
 
   if command -v gsettings >/dev/null 2>&1; then
     DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
@@ -383,14 +430,16 @@ configure_gnome_terminal_profile() {
       gsettings set "${profile_schema}" font "${font_setting}"
     DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
       gsettings set "${profile_schema}" cjk-utf8-ambiguous-width 'wide'
-    return 0
+    verify_gnome_terminal_profile "${profile_uuid}" "${font_setting}"
+    return $?
   fi
 
   if command -v dconf >/dev/null 2>&1; then
     dconf write "/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/use-system-font" 'false'
     dconf write "/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/font" "'${font_setting}'"
     dconf write "/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/cjk-utf8-ambiguous-width" "'wide'"
-    return 0
+    verify_gnome_terminal_profile "${profile_uuid}" "${font_setting}"
+    return $?
   fi
 
   return 1
@@ -405,17 +454,26 @@ configure_terminal_fonts() {
   local settings_path
   local settings_changed
   local configured_profiles=0
+  local verified_profiles=0
+  local dbus_address
 
   install_fontconfig_snippet
 
   if command -v gsettings >/dev/null 2>&1 || command -v dconf >/dev/null 2>&1; then
-    if command -v gsettings >/dev/null 2>&1; then
-      profiles_raw="$(DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}" \
+    dbus_address="$(gnome_terminal_dbus_address || true)"
+    if [[ -z "${dbus_address}" ]]; then
+      log "Could not reach a GNOME session bus; skipping gnome-terminal profile updates."
+      log "Run ${SCRIPT_NAME} from a graphical GNOME session, or set the profile manually:"
+      log "  Font: ${font_setting}"
+      log "  Custom font: enabled (use-system-font=false)"
+      log "  Ambiguous width: wide"
+    elif command -v gsettings >/dev/null 2>&1; then
+      profiles_raw="$(DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
         gsettings get org.gnome.Terminal.ProfilesList list 2>/dev/null || true)"
     fi
 
-    if [[ -z "${profiles_raw}" ]]; then
-      profile_uuid="$(DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}" \
+    if [[ -n "${dbus_address}" && -z "${profiles_raw}" ]]; then
+      profile_uuid="$(DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
         gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'" || true)"
       if [[ -n "${profile_uuid}" ]]; then
         profiles_raw="['${profile_uuid}']"
@@ -426,12 +484,20 @@ configure_terminal_fonts() {
       [[ -z "${profile_uuid}" ]] && continue
       if configure_gnome_terminal_profile "${profile_uuid}" "${font_setting}"; then
         configured_profiles=$((configured_profiles + 1))
+        verified_profiles=$((verified_profiles + 1))
         log "Set gnome-terminal profile ${profile_uuid} to ${font_setting} (ambiguous-width=wide)."
+      else
+        log "Failed to verify gnome-terminal profile ${profile_uuid}; settings may not have persisted."
+        log "Apply manually: gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/ use-system-font false"
+        log "Apply manually: gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/ font '${font_setting}'"
+        log "Apply manually: gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/ cjk-utf8-ambiguous-width wide"
       fi
     done
 
-    if [[ "${configured_profiles}" -eq 0 ]]; then
+    if [[ "${configured_profiles}" -eq 0 && -n "${dbus_address}" ]]; then
       log "Could not configure gnome-terminal profiles; gsettings/dconf unavailable."
+    elif [[ "${verified_profiles}" -gt 0 ]]; then
+      log "Restart open gnome-terminal windows so VTE reloads ${font_family}."
     fi
   fi
 
