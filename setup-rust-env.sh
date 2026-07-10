@@ -110,6 +110,40 @@ install_build_deps() {
   esac
 }
 
+can_execute_in_dir() {
+  local dir="$1"
+  local test_file
+
+  test_file="$(mktemp "${dir}/rustup-exec-test.XXXXXX")" || return 1
+  printf '#!/bin/sh\nexit 0\n' >"${test_file}"
+  chmod +x "${test_file}"
+  if "${test_file}" 2>/dev/null; then
+    rm -f "${test_file}"
+    return 0
+  fi
+
+  rm -f "${test_file}"
+  return 1
+}
+
+ensure_executable_tmpdir() {
+  local exec_tmp="${HOME}/.cache/tmp"
+  local current_tmp="${TMPDIR:-/tmp}"
+
+  if can_execute_in_dir "${current_tmp}"; then
+    return
+  fi
+
+  mkdir -p "${exec_tmp}"
+  if ! can_execute_in_dir "${exec_tmp}"; then
+    log "No executable temporary directory found (checked ${current_tmp} and ${exec_tmp})."
+    exit 1
+  fi
+
+  export TMPDIR="${exec_tmp}"
+  log "Using TMPDIR=${TMPDIR} because ${current_tmp} cannot execute binaries (noexec)."
+}
+
 ensure_cargo_in_path() {
   if command -v cargo >/dev/null 2>&1; then
     return
@@ -135,6 +169,7 @@ install_rust() {
   fi
 
   log "Installing rustup and stable Rust..."
+  ensure_executable_tmpdir
   curl --proto '=https' --tlsv1.2 -fsSL "${RUSTUP_INIT_URL}" | sh -s -- -y --profile minimal --default-toolchain stable
   ensure_cargo_in_path
 }

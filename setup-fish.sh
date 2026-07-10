@@ -173,6 +173,40 @@ install_runtime_deps() {
   esac
 }
 
+can_execute_in_dir() {
+  local dir="$1"
+  local test_file
+
+  test_file="$(mktemp "${dir}/rustup-exec-test.XXXXXX")" || return 1
+  printf '#!/bin/sh\nexit 0\n' >"${test_file}"
+  chmod +x "${test_file}"
+  if "${test_file}" 2>/dev/null; then
+    rm -f "${test_file}"
+    return 0
+  fi
+
+  rm -f "${test_file}"
+  return 1
+}
+
+ensure_executable_tmpdir() {
+  local exec_tmp="${HOME}/.cache/tmp"
+  local current_tmp="${TMPDIR:-/tmp}"
+
+  if can_execute_in_dir "${current_tmp}"; then
+    return
+  fi
+
+  mkdir -p "${exec_tmp}"
+  if ! can_execute_in_dir "${exec_tmp}"; then
+    log "No executable temporary directory found (checked ${current_tmp} and ${exec_tmp})."
+    exit 1
+  fi
+
+  export TMPDIR="${exec_tmp}"
+  log "Using TMPDIR=${TMPDIR} because ${current_tmp} cannot execute binaries (noexec)."
+}
+
 ensure_cargo_in_path() {
   if [[ -f "${HOME}/.cargo/env" ]]; then
     # shellcheck disable=SC1091
@@ -192,6 +226,7 @@ ensure_cargo_in_path() {
   fi
 
   log "Installing rustup and stable Rust for cargo..."
+  ensure_executable_tmpdir
   curl --proto '=https' --tlsv1.2 -fsSL "${RUSTUP_INIT_URL}" | sh -s -- -y --profile minimal --default-toolchain stable
   # shellcheck disable=SC1091
   source "${HOME}/.cargo/env"
