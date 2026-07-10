@@ -1,0 +1,46 @@
+---
+description: Use uv for all Python dependency management
+alwaysApply: true
+---
+
+# Python Dependencies — Use uv
+
+Always use [uv](https://docs.astral.sh/uv/) for Python environments and packages. Do not use `pip`, `python -m venv`, or `pipx` unless uv cannot do the job.
+
+## Virtual environments
+
+```bash
+# ❌ BAD: python3 -m venv .venv
+# ✅ GOOD:
+uv venv
+source .venv/bin/activate   # or: uv run <cmd> without activating
+```
+
+## Installing dependencies
+
+```bash
+# ❌ BAD: pip install pre-commit
+# ✅ GOOD — ad-hoc / dotfiles tooling:
+uv pip install pre-commit
+
+# ✅ GOOD — pyproject.toml projects:
+uv add requests
+```
+
+## Running tools
+
+```bash
+# ❌ BAD: pipx run pre-commit
+# ✅ GOOD:
+uv run pre-commit run --all-files
+```
+
+## Syncing from requirements
+
+```bash
+# ❌ BAD: pip install -r requirements.txt
+# ✅ GOOD:
+uv pip sync requirements.txt
+```
+
+When updating dev setup (e.g. `AGENTS.md` pre-commit), show uv commands. Use `uv pip install` for one-off tools; use `uv add` / `uv sync` when the repo has a `pyproject.toml`.

@@ -9,10 +9,11 @@ This is a **dotfiles** repo containing idempotent shell scripts that bootstrap a
 ## Dev Environment Setup
 
 ```bash
-python3 -m venv .venv
+uv venv
 source .venv/bin/activate
-pip install pre-commit
+uv pip install pre-commit
 pre-commit install
+pre-commit run --all-files
 ```
 
 ## Development Policies
