@@ -342,22 +342,96 @@ install_nerd_fonts() {
   if command -v fc-cache >/dev/null 2>&1; then
     log "Refreshing font cache..."
     fc-cache -f "${FONT_DIR}"
+    if [[ -f "${CONFIG_HOME}/fontconfig/conf.d/50-meslo-nerd-font.conf" ]]; then
+      fc-cache -f
+    fi
   fi
+}
+
+install_fontconfig_snippet() {
+  local source_path="${REPO_DIR}/fontconfig/50-meslo-nerd-font.conf"
+  local target_path="${CONFIG_HOME}/fontconfig/conf.d/50-meslo-nerd-font.conf"
+
+  if [[ ! -f "${source_path}" ]]; then
+    log "Skipping fontconfig snippet; ${source_path} not found."
+    return
+  fi
+
+  mkdir -p "$(dirname "${target_path}")"
+  if [[ -L "${target_path}" || -f "${target_path}" ]]; then
+    if [[ -L "${target_path}" && "$(readlink "${target_path}")" == "${source_path}" ]]; then
+      log "Fontconfig snippet already linked."
+      return
+    fi
+    rm -f "${target_path}"
+  fi
+
+  ln -s "${source_path}" "${target_path}"
+  log "Installed fontconfig snippet for MesloLGS NF."
+}
+
+configure_gnome_terminal_profile() {
+  local profile_uuid="$1"
+  local font_setting="$2"
+  local profile_schema="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/"
+  local dbus_address="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"
+
+  if command -v gsettings >/dev/null 2>&1; then
+    DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
+      gsettings set "${profile_schema}" use-system-font false
+    DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
+      gsettings set "${profile_schema}" font "${font_setting}"
+    DBUS_SESSION_BUS_ADDRESS="${dbus_address}" \
+      gsettings set "${profile_schema}" cjk-utf8-ambiguous-width 'wide'
+    return 0
+  fi
+
+  if command -v dconf >/dev/null 2>&1; then
+    dconf write "/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/use-system-font" 'false'
+    dconf write "/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/font" "'${font_setting}'"
+    dconf write "/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/cjk-utf8-ambiguous-width" "'wide'"
+    return 0
+  fi
+
+  return 1
 }
 
 configure_terminal_fonts() {
   local font_family="MesloLGS NF"
   local font_size=12
+  local font_setting="${font_family} Regular ${font_size}"
   local profile_uuid
+  local profiles_raw
   local settings_path
   local settings_changed
+  local configured_profiles=0
 
-  if command -v gsettings >/dev/null 2>&1; then
-    profile_uuid="$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'" || true)"
-    if [[ -n "${profile_uuid}" ]]; then
-      gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/" use-system-font false
-      gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_uuid}/" font "${font_family} ${font_size}"
-      log "Set gnome-terminal font to ${font_family} ${font_size}."
+  install_fontconfig_snippet
+
+  if command -v gsettings >/dev/null 2>&1 || command -v dconf >/dev/null 2>&1; then
+    if command -v gsettings >/dev/null 2>&1; then
+      profiles_raw="$(DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}" \
+        gsettings get org.gnome.Terminal.ProfilesList list 2>/dev/null || true)"
+    fi
+
+    if [[ -z "${profiles_raw}" ]]; then
+      profile_uuid="$(DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}" \
+        gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'" || true)"
+      if [[ -n "${profile_uuid}" ]]; then
+        profiles_raw="['${profile_uuid}']"
+      fi
+    fi
+
+    for profile_uuid in $(printf '%s' "${profiles_raw}" | tr -d "[]',"); do
+      [[ -z "${profile_uuid}" ]] && continue
+      if configure_gnome_terminal_profile "${profile_uuid}" "${font_setting}"; then
+        configured_profiles=$((configured_profiles + 1))
+        log "Set gnome-terminal profile ${profile_uuid} to ${font_setting} (ambiguous-width=wide)."
+      fi
+    done
+
+    if [[ "${configured_profiles}" -eq 0 ]]; then
+      log "Could not configure gnome-terminal profiles; gsettings/dconf unavailable."
     fi
   fi
 
