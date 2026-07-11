@@ -140,7 +140,7 @@ SETUVAR tide_terraform_color:844FBA
 SETUVAR tide_terraform_icon:\U000f1062
 SETUVAR tide_time_bg_color:normal
 SETUVAR tide_time_color:5F8787
-SETUVAR tide_time_format:\x25H\x3a\x25M
+SETUVAR tide_time_format:\x25T
 SETUVAR tide_toolbox_bg_color:normal
 SETUVAR tide_toolbox_color:613583
 SETUVAR tide_toolbox_icon:\ue24f
