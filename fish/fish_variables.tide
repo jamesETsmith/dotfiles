@@ -1,5 +1,5 @@
-SETUVAR _tide_left_items:os\x1epwd\x1egit\x1enewline\x1echaracter
-SETUVAR _tide_right_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc
+SETUVAR _tide_left_items:pwd\x1egit\x1enewline\x1echaracter
+SETUVAR _tide_right_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc\x1etime
 SETUVAR tide_aws_bg_color:normal
 SETUVAR tide_aws_color:FF9900
 SETUVAR tide_aws_icon:\uf270
@@ -72,7 +72,7 @@ SETUVAR tide_kubectl_bg_color:normal
 SETUVAR tide_kubectl_color:326CE5
 SETUVAR tide_kubectl_icon:\U000f10fe
 SETUVAR tide_left_prompt_frame_enabled:false
-SETUVAR tide_left_prompt_items:os\x1epwd\x1egit\x1enewline\x1echaracter
+SETUVAR tide_left_prompt_items:pwd\x1egit\x1enewline\x1echaracter
 SETUVAR tide_left_prompt_prefix:
 SETUVAR tide_left_prompt_separator_diff_color:\x20
 SETUVAR tide_left_prompt_separator_same_color:\x20
@@ -106,15 +106,15 @@ SETUVAR tide_pwd_bg_color:normal
 SETUVAR tide_pwd_color_anchors:00AFFF
 SETUVAR tide_pwd_color_dirs:0087AF
 SETUVAR tide_pwd_color_truncated_dirs:8787AF
-SETUVAR tide_pwd_icon:\uf07c
-SETUVAR tide_pwd_icon_home:\uf015
-SETUVAR tide_pwd_icon_unwritable:\uf023
+SETUVAR tide_pwd_icon:
+SETUVAR tide_pwd_icon_home:
+SETUVAR tide_pwd_icon_unwritable:
 SETUVAR tide_pwd_markers:\x2ebzr\x1e\x2ecitc\x1e\x2egit\x1e\x2ehg\x1e\x2enode\x2dversion\x1e\x2epython\x2dversion\x1e\x2eruby\x2dversion\x1e\x2eshorten_folder_marker\x1e\x2esvn\x1e\x2eterraform\x1ebun\x2elockb\x1eCargo\x2etoml\x1ecomposer\x2ejson\x1eCVS\x1ego\x2emod\x1epackage\x2ejson\x1ebuild\x2ezig
 SETUVAR tide_python_bg_color:normal
 SETUVAR tide_python_color:00AFAF
 SETUVAR tide_python_icon:\U000f0320
 SETUVAR tide_right_prompt_frame_enabled:false
-SETUVAR tide_right_prompt_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc
+SETUVAR tide_right_prompt_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1epython\x1erustc\x1etime
 SETUVAR tide_right_prompt_prefix:\x20
 SETUVAR tide_right_prompt_separator_diff_color:\x20
 SETUVAR tide_right_prompt_separator_same_color:\x20
