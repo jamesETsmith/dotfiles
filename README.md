@@ -16,7 +16,7 @@ curl -fsSL https://raw.githubusercontent.com/jamesETsmith/dotfiles/main/setup-zs
 
 ### Rust CLI Environment
 
-Installs Rust via [rustup](https://rustup.rs/) and a curated set of cargo tools: ripgrep, bat, eza, bottom, hyperfine, sd, tokei, git-delta, zellij, and yazi-build. The script prefers prebuilt binaries through [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) and falls back to `cargo install --locked` when needed. It also drops config files and shell aliases.
+Installs Rust via [rustup](https://rustup.rs/) and a curated set of cargo tools: ripgrep, bat, eza, bottom, hyperfine, sd, tokei, git-delta, zellij, and Yazi. The script prefers prebuilt binaries through [cargo-binstall](https://github.com/cargo-bins/cargo-binstall), falls back to Cargo builds when needed, and verifies that each expected command is available. It also drops config files and shell aliases.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jamesETsmith/dotfiles/main/setup-rust-env.sh | bash

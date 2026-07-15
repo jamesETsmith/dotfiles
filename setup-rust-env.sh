@@ -20,7 +20,6 @@ RUST_TOOLS=(
   tokei
   git-delta
   zellij
-  yazi-build
 )
 declare -A RUST_TOOL_COMMANDS=(
   [ripgrep]=rg
@@ -32,7 +31,6 @@ declare -A RUST_TOOL_COMMANDS=(
   [tokei]=tokei
   ["git-delta"]=delta
   [zellij]=zellij
-  ["yazi-build"]=yazi
 )
 
 log() {
@@ -235,11 +233,40 @@ install_rust_tool() {
 
   log "Installing ${crate} with cargo-binstall..."
   if cargo binstall --no-confirm "${crate}"; then
-    return
+    if command -v "${command_name}" >/dev/null 2>&1; then
+      return
+    fi
+    log "cargo-binstall reported success but did not provide ${command_name}."
+    return 1
   fi
 
   log "cargo-binstall could not install ${crate}; falling back to cargo install --locked..."
   cargo install --locked "${crate}"
+
+  if ! command -v "${command_name}" >/dev/null 2>&1; then
+    log "Installation of ${crate} completed without providing ${command_name}."
+    return 1
+  fi
+}
+
+install_yazi() {
+  if command -v yazi >/dev/null 2>&1 && command -v ya >/dev/null 2>&1; then
+    log "Yazi already installed; skipping."
+    return
+  fi
+
+  log "Installing Yazi with cargo-binstall..."
+  if cargo binstall --no-confirm yazi-fm && command -v yazi >/dev/null 2>&1 && command -v ya >/dev/null 2>&1; then
+    return
+  fi
+
+  log "cargo-binstall did not provide both yazi and ya; falling back to cargo install --force yazi-build..."
+  cargo install --force yazi-build
+
+  if ! command -v yazi >/dev/null 2>&1 || ! command -v ya >/dev/null 2>&1; then
+    log "Yazi installation completed without providing both yazi and ya."
+    return 1
+  fi
 }
 
 install_rust_tools() {
@@ -251,6 +278,7 @@ install_rust_tools() {
   for crate in "${RUST_TOOLS[@]}"; do
     install_rust_tool "${crate}"
   done
+  install_yazi
 }
 
 ensure_cargo_bin_in_path_or_shell_rcs() {
