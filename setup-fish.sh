@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Installs Fish from source with cargo, then configures Fisher and Tide.
+# Installs Fish from official prebuilt binaries, then configures Fisher and Tide.
 # Usage: ./setup-fish.sh
+# Optional: FISH_VERSION=4.8.1 ./setup-fish.sh to pin a release.
 
 SCRIPT_NAME="$(basename "$0")"
 DOTFILES_GIT_URL="https://github.com/jamesETsmith/dotfiles.git"
@@ -18,8 +19,8 @@ fi
 REPO_DIR=""
 CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
 FISH_CONFIG_DIR="${CONFIG_HOME}/fish"
-RUSTUP_INIT_URL="https://sh.rustup.rs"
-FISH_GIT_URL="https://github.com/fish-shell/fish-shell"
+FISH_RELEASE_URL="https://github.com/fish-shell/fish-shell/releases/download"
+FISH_LATEST_RELEASE_URL="https://github.com/fish-shell/fish-shell/releases/latest"
 FISHER_INSTALL_URL="https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish"
 TIDE_PLUGIN="ilancosman/tide@v6"
 FONT_DIR="${HOME}/.local/share/fonts"
@@ -119,36 +120,12 @@ detect_pkg_manager() {
   echo ""
 }
 
-install_build_deps() {
-  local pkg_manager
-  pkg_manager="$(detect_pkg_manager)"
-
-  case "${pkg_manager}" in
-    apt)
-      log "Installing Fish build dependencies with apt..."
-      sudo apt-get update
-      sudo apt-get install -y curl git build-essential pkg-config cmake ca-certificates libpcre2-dev gettext
-      ;;
-    dnf)
-      log "Installing Fish build dependencies with dnf..."
-      sudo dnf install -y curl git gcc gcc-c++ make pkgconfig cmake ca-certificates
-      ;;
-    pacman)
-      log "Installing Fish build dependencies with pacman..."
-      sudo pacman -Syu --noconfirm curl git base-devel pkgconf cmake ca-certificates
-      ;;
-    *)
-      log "No supported package manager detected (apt/dnf/pacman)."
-      log "Install curl, git, cargo, and native build tools manually, then re-run ${SCRIPT_NAME}."
-      ;;
-  esac
-}
-
 install_runtime_deps() {
   local needed=()
 
   command -v curl >/dev/null 2>&1 || needed+=(curl)
   command -v git >/dev/null 2>&1 || needed+=(git)
+  command -v tar >/dev/null 2>&1 || needed+=(tar)
   command -v fc-cache >/dev/null 2>&1 || needed+=(fontconfig)
   command -v unzip >/dev/null 2>&1 || needed+=(unzip)
 
@@ -176,103 +153,65 @@ install_runtime_deps() {
       ;;
     *)
       log "No supported package manager detected (apt/dnf/pacman)."
-      log "Install curl, git, and fontconfig manually, then re-run ${SCRIPT_NAME}."
+      log "Install curl, git, tar, and fontconfig manually, then re-run ${SCRIPT_NAME}."
       exit 1
       ;;
   esac
 }
 
-can_execute_in_dir() {
-  local dir="$1"
-  local test_file
+resolve_fish_arch() {
+  local machine
+  machine="$(uname -m)"
 
-  test_file="$(mktemp "${dir}/rustup-exec-test.XXXXXX")" || return 1
-  printf '#!/bin/sh\nexit 0\n' >"${test_file}"
-  chmod +x "${test_file}"
-  if "${test_file}" 2>/dev/null; then
-    rm -f "${test_file}"
-    return 0
-  fi
-
-  rm -f "${test_file}"
-  return 1
+  case "${machine}" in
+    x86_64 | amd64)
+      printf '%s\n' "x86_64"
+      ;;
+    aarch64 | arm64)
+      printf '%s\n' "aarch64"
+      ;;
+    *)
+      log "Unsupported CPU architecture for prebuilt fish: ${machine}"
+      exit 1
+      ;;
+  esac
 }
 
-ensure_executable_tmpdir() {
-  local exec_tmp="${HOME}/.cache/tmp"
-  local current_tmp="${TMPDIR:-/tmp}"
+installed_fish_version() {
+  local fish_bin="$1"
 
-  if can_execute_in_dir "${current_tmp}"; then
-    return
+  if [[ ! -x "${fish_bin}" ]]; then
+    return 1
   fi
 
-  mkdir -p "${exec_tmp}"
-  if ! can_execute_in_dir "${exec_tmp}"; then
-    log "No executable temporary directory found (checked ${current_tmp} and ${exec_tmp})."
+  "${fish_bin}" --version 2>/dev/null | sed -n 's/^fish, version //p'
+}
+
+resolve_latest_fish_version() {
+  local release_url version
+
+  release_url="$(
+    curl -fsSIL --connect-timeout 20 --max-time 60 \
+      -o /dev/null -w '%{url_effective}' \
+      "${FISH_LATEST_RELEASE_URL}"
+  )"
+  version="${release_url##*/}"
+
+  if [[ -z "${version}" || "${version}" == "latest" ]]; then
+    log "Failed to resolve latest fish release version."
     exit 1
   fi
 
-  export TMPDIR="${exec_tmp}"
-  log "Using TMPDIR=${TMPDIR} because ${current_tmp} cannot execute binaries (noexec)."
+  printf '%s\n' "${version}"
 }
 
-resolve_cargo_target_dir() {
-  if [[ -n "${CARGO_TARGET_DIR:-}" ]]; then
-    printf '%s\n' "${CARGO_TARGET_DIR}"
-    return
-  fi
-  printf '%s\n' "${CARGO_HOME:-${HOME}/.cargo}/target"
-}
-
-ensure_executable_cargo_target_dir() {
-  local exec_target="${HOME}/.cache/cargo-target"
-  local current_target
-
-  current_target="$(resolve_cargo_target_dir)"
-
-  mkdir -p "${current_target}"
-  if can_execute_in_dir "${current_target}"; then
+resolve_fish_version() {
+  if [[ -n "${FISH_VERSION:-}" ]]; then
+    printf '%s\n' "${FISH_VERSION}"
     return
   fi
 
-  mkdir -p "${exec_target}"
-  if ! can_execute_in_dir "${exec_target}"; then
-    log "No executable cargo target directory found (checked ${current_target} and ${exec_target})."
-    exit 1
-  fi
-
-  export CARGO_TARGET_DIR="${exec_target}"
-  log "Using CARGO_TARGET_DIR=${CARGO_TARGET_DIR} because ${current_target} cannot execute binaries (noexec)."
-}
-
-ensure_cargo_in_path() {
-  if [[ -f "${HOME}/.cargo/env" ]]; then
-    # shellcheck disable=SC1091
-    source "${HOME}/.cargo/env"
-  fi
-
-  if command -v cargo >/dev/null 2>&1 && cargo --version >/dev/null 2>&1; then
-    return
-  fi
-
-  if command -v rustup >/dev/null 2>&1; then
-    log "Repairing rustup stable toolchain for cargo..."
-    rustup default stable
-    if cargo --version >/dev/null 2>&1; then
-      return
-    fi
-  fi
-
-  log "Installing rustup and stable Rust for cargo..."
-  ensure_executable_tmpdir
-  curl --proto '=https' --tlsv1.2 -fsSL "${RUSTUP_INIT_URL}" | sh -s -- -y --profile minimal --default-toolchain stable
-  # shellcheck disable=SC1091
-  source "${HOME}/.cargo/env"
-
-  if ! cargo --version >/dev/null 2>&1; then
-    log "cargo is still not available in PATH."
-    exit 1
-  fi
+  resolve_latest_fish_version
 }
 
 ensure_user_bin_dirs_in_path() {
@@ -292,28 +231,45 @@ ensure_user_bin_dirs_in_path() {
 }
 
 install_fish() {
-  local cargo_fish="${HOME}/.cargo/bin/fish"
-  if [[ -x "${cargo_fish}" ]]; then
-    log "fish already installed at ${cargo_fish}."
-    return
+  local local_fish="${HOME}/.local/bin/fish"
+  local fish_version
+  local installed_version
+  local arch archive_name release_url temp_dir
+
+  fish_version="$(resolve_fish_version)"
+
+  if installed_version="$(installed_fish_version "${local_fish}")"; then
+    if [[ "${installed_version}" == "${fish_version}" ]]; then
+      log "fish ${fish_version} already installed at ${local_fish}."
+      return
+    fi
+    log "Upgrading fish ${installed_version} -> ${fish_version}..."
   fi
 
-  install_build_deps
-  ensure_cargo_in_path
   ensure_user_bin_dirs_in_path
+  mkdir -p "${HOME}/.local/bin"
 
-  log "Installing fish from ${FISH_GIT_URL} with cargo..."
-  ensure_executable_tmpdir
-  ensure_executable_cargo_target_dir
-  local temp_dir
+  arch="$(resolve_fish_arch)"
+  archive_name="fish-${fish_version}-linux-${arch}.tar.xz"
+  release_url="${FISH_RELEASE_URL}/${fish_version}/${archive_name}"
+
+  log "Installing fish ${fish_version} (linux-${arch}) from GitHub releases..."
   temp_dir="$(mktemp -d)"
-  git clone --depth 1 "${FISH_GIT_URL}" "${temp_dir}"
-  (
-    cd "${temp_dir}"
-    cargo install --path . --bin fish --no-default-features
-  )
+  if ! curl -fL --connect-timeout 20 --max-time 300 -o "${temp_dir}/${archive_name}" "${release_url}"; then
+    rm -rf "${temp_dir}"
+    log "Failed to download ${release_url}"
+    exit 1
+  fi
+  tar -xJf "${temp_dir}/${archive_name}" -C "${temp_dir}"
+  install -m 755 "${temp_dir}/fish" "${local_fish}"
   rm -rf "${temp_dir}"
-  ensure_user_bin_dirs_in_path
+
+  if ! installed_version="$(installed_fish_version "${local_fish}")"; then
+    log "fish install failed; ${local_fish} is not executable."
+    exit 1
+  fi
+
+  log "Installed fish ${installed_version} at ${local_fish}."
 }
 
 install_uv() {

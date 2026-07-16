@@ -12,31 +12,32 @@ jobs:
     env:
       FISH_TEST_HOME: /tmp/dotfiles-fish-home
       XDG_CONFIG_HOME: /tmp/dotfiles-fish-home/.config
+      FISH_TEST_PATH: /tmp/dotfiles-fish-home/.local/bin
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Cache cargo registry and fish binary
+      - name: Cache fish binary
         uses: actions/cache@v4
         with:
           path: |
-            /tmp/dotfiles-fish-home/.cargo/.crates.toml
-            /tmp/dotfiles-fish-home/.cargo/.crates2.json
-            /tmp/dotfiles-fish-home/.cargo/registry
-            /tmp/dotfiles-fish-home/.cargo/git
-            /tmp/dotfiles-fish-home/.cargo/bin
-            /tmp/dotfiles-fish-home/.rustup
-          key: fish-cargo-v1-${{ hashFiles('setup-fish.sh', '.github/workflows/fish_setup.yaml') }}
+            /tmp/dotfiles-fish-home/.local/bin/fish
+          key: fish-prebuilt-v1-${{ hashFiles('setup-fish.sh', '.github/workflows/fish_setup.yaml') }}
           restore-keys: |
-            fish-cargo-v1-
+            fish-prebuilt-v1-
       - name: Run setup-fish.sh
         run: |
           mkdir -p "${FISH_TEST_HOME}"
           HOME="${FISH_TEST_HOME}" bash ci/measure-step.sh "Run setup-fish.sh" bash setup-fish.sh
       - name: Verify Fish install
         run: |
-          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Fish install" bash -c '
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_PATH}:${PATH}" bash ci/measure-step.sh "Verify Fish install" bash -c '
             if ! command -v fish >/dev/null 2>&1; then
               echo "FAIL: fish not found on PATH"
+              exit 1
+            fi
+
+            if [[ "$(command -v fish)" != "${HOME}/.local/bin/fish" ]]; then
+              echo "FAIL: expected fish at ${HOME}/.local/bin/fish, got $(command -v fish)"
               exit 1
             fi
 
@@ -44,7 +45,7 @@ jobs:
           '
       - name: Verify Nerd Fonts
         run: |
-          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Nerd Fonts" bash -c '
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_PATH}:${PATH}" bash ci/measure-step.sh "Verify Nerd Fonts" bash -c '
             for font in \
               "HackNerdFontMono-Regular.ttf" \
               "HackNerdFontMono-Bold.ttf" \
@@ -64,7 +65,7 @@ jobs:
           '
       - name: Verify uv install
         run: |
-          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.local/bin:${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify uv install" bash -c '
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_PATH}:${PATH}" bash ci/measure-step.sh "Verify uv install" bash -c '
             if ! command -v uv >/dev/null 2>&1; then
               echo "FAIL: uv not found on PATH"
               exit 1
@@ -74,7 +75,7 @@ jobs:
           '
       - name: Verify Fisher and Tide
         run: |
-          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Fisher and Tide" bash -c '
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_PATH}:${PATH}" bash ci/measure-step.sh "Verify Fisher and Tide" bash -c '
             fish -c "functions -q fisher"
             fish -c "functions -q tide"
 
@@ -88,7 +89,7 @@ jobs:
           '
       - name: Verify Fish config
         run: |
-          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Fish config" bash -c '
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_PATH}:${PATH}" bash ci/measure-step.sh "Verify Fish config" bash -c '
             if [[ "$(readlink "${HOME}/.config/fish/config.fish")" != "${GITHUB_WORKSPACE}/fish/config.fish" ]]; then
               echo "FAIL: config.fish does not point to repo config"
               exit 1
@@ -132,7 +133,7 @@ jobs:
           '
       - name: Verify PATH includes user bin dirs
         run: |
-          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify PATH includes user bin dirs" bash -c '
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_PATH}:${PATH}" bash ci/measure-step.sh "Verify PATH includes user bin dirs" bash -c '
             for dir in "${HOME}/.local/bin" "${HOME}/.cargo/bin"; do
               if ! fish -c "contains ${dir} \$PATH; or exit 1" </dev/null; then
                 echo "FAIL: ${dir} not in fish PATH"
@@ -143,7 +144,7 @@ jobs:
           '
       - name: Verify bashrc launches fish
         run: |
-          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.local/bin:${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify bashrc launches fish" bash -c '
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_PATH}:${PATH}" bash ci/measure-step.sh "Verify bashrc launches fish" bash -c '
             if ! grep -Fq "# >>> dotfiles fish setup >>>" "${HOME}/.bashrc"; then
               echo "FAIL: fish startup block missing from .bashrc"
               exit 1
@@ -158,7 +159,7 @@ jobs:
           '
       - name: Verify Tide prompt loads
         run: |
-          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify Tide prompt loads" bash -c '
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_PATH}:${PATH}" bash ci/measure-step.sh "Verify Tide prompt loads" bash -c '
             if ! script -q -c "fish -i -c \"functions fish_prompt | rg -q _tide_2_line_prompt; and fish_prompt\"" /dev/null; then
               echo "FAIL: Tide prompt failed to render"
               exit 1
@@ -167,7 +168,7 @@ jobs:
           '
       - name: Verify setup is idempotent
         run: |
-          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_HOME}/.cargo/bin:${PATH}" bash ci/measure-step.sh "Verify setup-fish.sh idempotency" bash setup-fish.sh
+          HOME="${FISH_TEST_HOME}" PATH="${FISH_TEST_PATH}:${PATH}" bash ci/measure-step.sh "Verify setup-fish.sh idempotency" bash setup-fish.sh
       - name: Upload timing data
         uses: actions/upload-artifact@v4
         if: always()
