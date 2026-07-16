@@ -23,8 +23,8 @@ Ask questions like:
 
 We want to know how the ensemble of reviewers thought about the artifact. Was there consensus? Were there disagreements? What were the key points of disagreement?
 
-Provide a summary of the review in a markdown file.
+Provide a summary of the review in a markdown file. Include reviewer roles, consensus, disagreements, prioritized findings, and file references where applicable.
 
-Provide options for addressing the review comments.
+Provide options for addressing the review comments, with relative implementation cost and unresolved tradeoffs. For design reviews, explicitly cover accessibility, responsive behavior, design-system consistency, and whether visual metaphors truthfully represent the underlying product behavior.
 
-If we're operating in YOLO mode (or ralph wiggum style run), then make check to checkpoint the artifact (e.g. with git if appropriate) before making any changes.
+Do not modify the reviewed artifact unless the user also asks for remediation. If we're operating in YOLO mode (or ralph wiggum style run), then checkpoint the artifact (e.g. with git if appropriate) before making any changes.

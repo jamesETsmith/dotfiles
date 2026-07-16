@@ -15,11 +15,12 @@ This skill used to incrementally build and tests a new feature or fix. It acts l
 Detailed instructions for the AI on how to execute this skill:
 
 1. Establish the plan for the feature or fix.
-2. Decide on the tests we want to verify the feature or fix. This should usually be the whole test suite unless the user specifies otherwise. Save the output of the tests to a file and collect a summary of the tests that are easy to compare from run to run.
-3. Check the code into git. If you're not on a feature branch, create one and check it out.
+2. Before modifying files, check repository status and create a feature branch if currently on the default branch. Do not commit or push unless the user explicitly requests it.
+3. Decide on the tests we want to verify the feature or fix. This should usually be the whole test suite unless the user specifies otherwise. Save the output of the tests to a file and collect a summary of the tests that are easy to compare from run to run.
 4. Make incremental changes to the code (if the changes in the plan are small you can make them all at once of course). But for larger changes, break them up accordingly.
 5. Re-run the tests and compare the results to the previous run. If the results are the same, move on to the next change. If the results are different, go back and fix the code.
 6. Repeat 3-5 until the feature or fix is complete.
+7. If the required runtime is unavailable, add tests anyway, run the strongest dependency-free static and smoke checks available, and record the exact limitation in the report and full test output.
 
 At the end of this process the agent should produce a report markdown file with the following sections:
 - A summary of the feature or fix
