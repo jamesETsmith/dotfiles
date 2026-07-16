@@ -134,6 +134,8 @@ install_runtime_deps() {
     return
   fi
 
+  log "Missing runtime dependencies: ${needed[*]}"
+
   local pkg_manager
   pkg_manager="$(detect_pkg_manager)"
 
@@ -153,7 +155,7 @@ install_runtime_deps() {
       ;;
     *)
       log "No supported package manager detected (apt/dnf/pacman)."
-      log "Install curl, git, tar, and fontconfig manually, then re-run ${SCRIPT_NAME}."
+      log "Install missing packages manually: ${needed[*]}"
       exit 1
       ;;
   esac
