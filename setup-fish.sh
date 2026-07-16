@@ -39,6 +39,9 @@ HACK_NERD_FONT_FILES=(
   "HackNerdFontMono-Italic.ttf"
   "HackNerdFontMono-BoldItalic.ttf"
 )
+LOCAL_BIN="${HOME}/.local/bin"
+DEPS_CACHE="${XDG_CACHE_HOME:-${HOME}/.cache}/dotfiles/deps"
+STATIC_CURL_BASE_URL="https://github.com/moparisthebest/static-curl/releases/latest/download"
 
 log() {
   printf '[%s] %s\n' "${SCRIPT_NAME}" "$*"
@@ -80,13 +83,17 @@ resolve_repo_dir() {
   fi
 
   log "Fetching dotfiles repo for Fish config..."
-  if [[ -d "${DOTFILES_CACHE_DIR}/.git" ]]; then
-    git -C "${DOTFILES_CACHE_DIR}" fetch --depth 1 origin "${DOTFILES_BRANCH}"
-    git -C "${DOTFILES_CACHE_DIR}" checkout "${DOTFILES_BRANCH}"
-    git -C "${DOTFILES_CACHE_DIR}" reset --hard "origin/${DOTFILES_BRANCH}"
+  if command -v git >/dev/null 2>&1; then
+    if [[ -d "${DOTFILES_CACHE_DIR}/.git" ]]; then
+      git -C "${DOTFILES_CACHE_DIR}" fetch --depth 1 origin "${DOTFILES_BRANCH}"
+      git -C "${DOTFILES_CACHE_DIR}" checkout "${DOTFILES_BRANCH}"
+      git -C "${DOTFILES_CACHE_DIR}" reset --hard "origin/${DOTFILES_BRANCH}"
+    else
+      mkdir -p "$(dirname "${DOTFILES_CACHE_DIR}")"
+      git clone --depth 1 --branch "${DOTFILES_BRANCH}" "${DOTFILES_GIT_URL}" "${DOTFILES_CACHE_DIR}"
+    fi
   else
-    mkdir -p "$(dirname "${DOTFILES_CACHE_DIR}")"
-    git clone --depth 1 --branch "${DOTFILES_BRANCH}" "${DOTFILES_GIT_URL}" "${DOTFILES_CACHE_DIR}"
+    fetch_dotfiles_via_github_archive
   fi
 
   if ! fish_config_files_present "${DOTFILES_CACHE_DIR}"; then
@@ -120,25 +127,360 @@ detect_pkg_manager() {
   echo ""
 }
 
-install_runtime_deps() {
+ensure_local_bin_dir() {
+  mkdir -p "${LOCAL_BIN}"
+  case ":${PATH}:" in
+    *":${LOCAL_BIN}:"*) ;;
+    *)
+      export PATH="${LOCAL_BIN}:${PATH}"
+      log "Added ${LOCAL_BIN} to current PATH for this session."
+      ;;
+  esac
+}
+
+dotfiles_download() {
+  local url="$1"
+  local dest="$2"
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -fL --connect-timeout 20 --max-time 300 -o "${dest}" "${url}"
+    return
+  fi
+  if command -v wget >/dev/null 2>&1; then
+    wget -q -O "${dest}" "${url}"
+    return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "${url}" "${dest}" <<'PY'
+import sys
+import urllib.request
+
+urllib.request.urlretrieve(sys.argv[1], sys.argv[2])
+PY
+    return
+  fi
+
+  log "No download tool available (curl, wget, or python3)."
+  return 1
+}
+
+dotfiles_extract_xz() {
+  local archive="$1"
+  local dest="$2"
+
+  if command -v tar >/dev/null 2>&1; then
+    tar -xJf "${archive}" -C "${dest}"
+    return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "${archive}" "${dest}" <<'PY'
+import sys
+import tarfile
+
+with tarfile.open(sys.argv[1], "r:xz") as tar:
+    tar.extractall(sys.argv[2])
+PY
+    return
+  fi
+
+  log "Cannot extract .tar.xz archive; install tar or python3."
+  return 1
+}
+
+dotfiles_extract_gz() {
+  local archive="$1"
+  local dest="$2"
+
+  if command -v tar >/dev/null 2>&1; then
+    tar -xzf "${archive}" -C "${dest}"
+    return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "${archive}" "${dest}" <<'PY'
+import sys
+import tarfile
+
+with tarfile.open(sys.argv[1], "r:gz") as tar:
+    tar.extractall(sys.argv[2])
+PY
+    return
+  fi
+
+  log "Cannot extract .tar.gz archive; install tar or python3."
+  return 1
+}
+
+dotfiles_extract_zip_member() {
+  local archive="$1"
+  local member="$2"
+  local dest="$3"
+
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -j -q "${archive}" "${member}" -d "${dest}"
+    return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "${archive}" "${member}" "${dest}" <<'PY'
+import sys
+import zipfile
+from pathlib import Path
+
+archive = sys.argv[1]
+member = sys.argv[2]
+dest = Path(sys.argv[3])
+dest.mkdir(parents=True, exist_ok=True)
+with zipfile.ZipFile(archive) as zf:
+    dest.joinpath(Path(member).name).write_bytes(zf.read(member))
+PY
+    return
+  fi
+
+  log "Cannot extract zip archive; install unzip or python3."
+  return 1
+}
+
+fetch_dotfiles_via_github_archive() {
+  local archive_url temp_dir archive_path extract_root repo_dir_name
+
+  repo_dir_name="dotfiles-${DOTFILES_BRANCH}"
+  archive_url="https://github.com/jamesETsmith/dotfiles/archive/refs/heads/${DOTFILES_BRANCH}.tar.gz"
+  temp_dir="$(mktemp -d)"
+  archive_path="${temp_dir}/dotfiles.tar.gz"
+
+  log "Fetching dotfiles archive from GitHub..."
+  dotfiles_download "${archive_url}" "${archive_path}"
+  dotfiles_extract_gz "${archive_path}" "${temp_dir}"
+  extract_root="${temp_dir}/${repo_dir_name}"
+  if [[ ! -d "${extract_root}" ]]; then
+    extract_root="$(find "${temp_dir}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+  fi
+  if [[ ! -d "${extract_root}" ]]; then
+    rm -rf "${temp_dir}"
+    log "Dotfiles archive did not extract to an expected directory."
+    exit 1
+  fi
+
+  rm -rf "${DOTFILES_CACHE_DIR}"
+  mkdir -p "$(dirname "${DOTFILES_CACHE_DIR}")"
+  mv "${extract_root}" "${DOTFILES_CACHE_DIR}"
+  rm -rf "${temp_dir}"
+}
+
+resolve_static_curl_asset() {
+  local machine
+  machine="$(uname -m)"
+
+  case "${machine}" in
+    x86_64 | amd64)
+      printf '%s\n' "curl-amd64"
+      ;;
+    aarch64 | arm64)
+      printf '%s\n' "curl-aarch64"
+      ;;
+    armv7l | armv7)
+      printf '%s\n' "curl-armv7"
+      ;;
+    armv6l | armhf)
+      printf '%s\n' "curl-armhf"
+      ;;
+    i686 | i386)
+      printf '%s\n' "curl-i386"
+      ;;
+    ppc64le)
+      printf '%s\n' "curl-ppc64le"
+      ;;
+    *)
+      log "Unsupported CPU architecture for static curl: ${machine}"
+      return 1
+      ;;
+  esac
+}
+
+install_rootless_curl() {
+  local asset dest cache_path url
+
+  if command -v curl >/dev/null 2>&1; then
+    return 0
+  fi
+
+  dest="${LOCAL_BIN}/curl"
+  if [[ -x "${dest}" ]]; then
+    return 0
+  fi
+
+  asset="$(resolve_static_curl_asset)" || return 1
+  url="${STATIC_CURL_BASE_URL}/${asset}"
+  cache_path="${DEPS_CACHE}/${asset}"
+  mkdir -p "${LOCAL_BIN}" "${DEPS_CACHE}"
+
+  log "Installing static curl to ${dest}..."
+  dotfiles_download "${url}" "${cache_path}" || return 1
+  install -m 755 "${cache_path}" "${dest}"
+}
+
+install_rootless_tar() {
+  local dest="${LOCAL_BIN}/tar"
+
+  if command -v tar >/dev/null 2>&1; then
+    return 0
+  fi
+  if [[ -x "${dest}" ]]; then
+    return 0
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    return 1
+  fi
+
+  mkdir -p "${LOCAL_BIN}"
+  cat >"${dest}" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ge 4 && ( "$1" == "-xJf" || "$1" == "-xzf" ) && "$3" == "-C" ]]; then
+  python3 - "$1" "$2" "$4" <<'PY'
+import sys
+import tarfile
+
+mode = "r:xz" if sys.argv[1] == "-xJf" else "r:gz"
+with tarfile.open(sys.argv[2], mode) as tar:
+    tar.extractall(sys.argv[3])
+PY
+  exit 0
+fi
+
+for candidate in /usr/bin/tar /bin/tar; do
+  if [[ -x "${candidate}" ]]; then
+    exec "${candidate}" "$@"
+  fi
+done
+
+printf 'tar: unsupported invocation: %s\n' "$*" >&2
+exit 1
+EOF
+  chmod +x "${dest}"
+  log "Installed python3-backed tar wrapper to ${dest}."
+}
+
+install_rootless_unzip() {
+  local dest="${LOCAL_BIN}/unzip"
+
+  if command -v unzip >/dev/null 2>&1; then
+    return 0
+  fi
+  if [[ -x "${dest}" ]]; then
+    return 0
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    return 1
+  fi
+
+  mkdir -p "${LOCAL_BIN}"
+  cat >"${dest}" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -eq 5 && "$1" == "-j" && "$2" == "-q" && "$4" == "-d" ]]; then
+  python3 - "$3" "$5" "$4" <<'PY'
+import sys
+import zipfile
+from pathlib import Path
+
+archive = sys.argv[1]
+dest = Path(sys.argv[3])
+member = sys.argv[2]
+dest.mkdir(parents=True, exist_ok=True)
+with zipfile.ZipFile(archive) as zf:
+    dest.joinpath(Path(member).name).write_bytes(zf.read(member))
+PY
+  exit 0
+fi
+
+for candidate in /usr/bin/unzip /bin/unzip; do
+  if [[ -x "${candidate}" ]]; then
+    exec "${candidate}" "$@"
+  fi
+done
+
+printf 'unzip: unsupported invocation: %s\n' "$*" >&2
+exit 1
+EOF
+  chmod +x "${dest}"
+  log "Installed python3-backed unzip wrapper to ${dest}."
+}
+
+install_rootless_runtime_deps() {
+  local dep failed=0
+
+  for dep in curl tar unzip; do
+    if command -v "${dep}" >/dev/null 2>&1; then
+      continue
+    fi
+    case "${dep}" in
+      curl)
+        install_rootless_curl || failed=1
+        ;;
+      tar)
+        install_rootless_tar || failed=1
+        ;;
+      unzip)
+        install_rootless_unzip || failed=1
+        ;;
+    esac
+  done
+
+  return "${failed}"
+}
+
+runtime_deps_satisfied() {
+  command -v curl >/dev/null 2>&1 \
+    && command -v tar >/dev/null 2>&1 \
+    && command -v unzip >/dev/null 2>&1
+}
+
+missing_runtime_packages() {
   local needed=()
 
   command -v curl >/dev/null 2>&1 || needed+=(curl)
-  command -v git >/dev/null 2>&1 || needed+=(git)
   command -v tar >/dev/null 2>&1 || needed+=(tar)
-  command -v fc-cache >/dev/null 2>&1 || needed+=(fontconfig)
   command -v unzip >/dev/null 2>&1 || needed+=(unzip)
 
-  if [[ ${#needed[@]} -eq 0 ]]; then
+  if [[ ${#needed[@]} -gt 0 ]]; then
+    printf '%s\n' "${needed[*]}"
+  fi
+}
+
+install_runtime_deps() {
+  local needed=()
+  local pkg_manager
+
+  ensure_local_bin_dir
+
+  if ! command -v git >/dev/null 2>&1; then
+    log "git not found; will use GitHub archive fallbacks where needed."
+  fi
+  if ! command -v fc-cache >/dev/null 2>&1; then
+    log "fc-cache not found; font cache refresh will be skipped."
+  fi
+
+  if runtime_deps_satisfied; then
     log "Fish runtime dependencies already installed."
     return
   fi
 
+  needed=($(missing_runtime_packages))
   log "Missing runtime dependencies: ${needed[*]}"
+  log "Trying rootless installs into ${LOCAL_BIN}..."
+  install_rootless_runtime_deps || true
 
-  local pkg_manager
+  if runtime_deps_satisfied; then
+    log "Fish runtime dependencies satisfied via rootless install."
+    return
+  fi
+
+  needed=($(missing_runtime_packages))
+  log "Still missing runtime dependencies: ${needed[*]}"
+
   pkg_manager="$(detect_pkg_manager)"
-
   case "${pkg_manager}" in
     apt)
       log "Installing Fish runtime dependencies with apt..."
@@ -159,6 +501,12 @@ install_runtime_deps() {
       exit 1
       ;;
   esac
+
+  if ! runtime_deps_satisfied; then
+    needed=($(missing_runtime_packages))
+    log "Runtime dependencies still missing after install: ${needed[*]}"
+    exit 1
+  fi
 }
 
 resolve_fish_arch() {
@@ -257,12 +605,12 @@ install_fish() {
 
   log "Installing fish ${fish_version} (linux-${arch}) from GitHub releases..."
   temp_dir="$(mktemp -d)"
-  if ! curl -fL --connect-timeout 20 --max-time 300 -o "${temp_dir}/${archive_name}" "${release_url}"; then
+  if ! dotfiles_download "${release_url}" "${temp_dir}/${archive_name}"; then
     rm -rf "${temp_dir}"
     log "Failed to download ${release_url}"
     exit 1
   fi
-  tar -xJf "${temp_dir}/${archive_name}" -C "${temp_dir}"
+  dotfiles_extract_xz "${temp_dir}/${archive_name}" "${temp_dir}"
   install -m 755 "${temp_dir}/fish" "${local_fish}"
   rm -rf "${temp_dir}"
 
@@ -328,9 +676,9 @@ install_hack_nerd_fonts() {
 
   log "Installing Hack Nerd Font Mono from ${HACK_NERD_FONT_RELEASE_URL}..."
   temp_dir="$(mktemp -d)"
-  curl -fL --connect-timeout 20 --max-time 120 -o "${temp_dir}/Hack.zip" "${HACK_NERD_FONT_RELEASE_URL}"
+  dotfiles_download "${HACK_NERD_FONT_RELEASE_URL}" "${temp_dir}/Hack.zip"
   for font_file in "${HACK_NERD_FONT_FILES[@]}"; do
-    unzip -j -q "${temp_dir}/Hack.zip" "${font_file}" -d "${FONT_DIR}"
+    dotfiles_extract_zip_member "${temp_dir}/Hack.zip" "${font_file}" "${FONT_DIR}"
     log "Installed ${font_file}."
   done
   rm -rf "${temp_dir}"
@@ -346,6 +694,8 @@ install_nerd_fonts() {
     if [[ -f "${CONFIG_HOME}/fontconfig/conf.d/50-terminal-nerd-font.conf" ]]; then
       fc-cache -f
     fi
+  else
+    log "fc-cache not available; fonts installed without cache refresh."
   fi
 }
 
@@ -608,6 +958,56 @@ write_fish_config() {
   ensure_line_in_file "${FISH_CONFIG_DIR}/fish_plugins" "${TIDE_PLUGIN}"
 }
 
+install_fish_plugin_from_github_archive() {
+  local repo="$1"
+  local ref="$2"
+  local url temp_dir archive_path extract_root subdir
+
+  if [[ "${ref}" == v* ]] || [[ "${ref}" =~ ^[0-9] ]]; then
+    url="https://github.com/${repo}/archive/refs/tags/${ref}.tar.gz"
+  else
+    url="https://github.com/${repo}/archive/refs/heads/${ref}.tar.gz"
+  fi
+
+  temp_dir="$(mktemp -d)"
+  archive_path="${temp_dir}/plugin.tar.gz"
+  dotfiles_download "${url}" "${archive_path}"
+  dotfiles_extract_gz "${archive_path}" "${temp_dir}"
+  extract_root="$(find "${temp_dir}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+  if [[ -z "${extract_root}" ]]; then
+    rm -rf "${temp_dir}"
+    log "Failed to extract plugin archive for ${repo}@${ref}."
+    exit 1
+  fi
+
+  for subdir in functions completions conf.d; do
+    if [[ -d "${extract_root}/${subdir}" ]]; then
+      mkdir -p "${FISH_CONFIG_DIR}/${subdir}"
+      cp -R "${extract_root}/${subdir}/." "${FISH_CONFIG_DIR}/${subdir}/"
+    fi
+  done
+  rm -rf "${temp_dir}"
+  log "Installed ${repo}@${ref} from GitHub archive."
+}
+
+install_fisher_and_tide_from_archives() {
+  local tide_repo tide_ref
+
+  tide_repo="${TIDE_PLUGIN%@*}"
+  tide_ref="${TIDE_PLUGIN#*@}"
+
+  log "Installing Fisher and Tide from GitHub archives..."
+  fish -c "
+    if not functions -q fisher
+      curl -fsSL --connect-timeout 20 --max-time 120 ${FISHER_INSTALL_URL} | source
+    end
+  " </dev/null
+
+  install_fish_plugin_from_github_archive "jorgebucaran/fisher" "main"
+  install_fish_plugin_from_github_archive "${tide_repo}" "${tide_ref}"
+  FISHER_TIDE_INSTALLED=1
+}
+
 install_fisher_and_tide() {
   FISHER_TIDE_INSTALLED=0
 
@@ -616,14 +1016,19 @@ install_fisher_and_tide() {
     return
   fi
 
-  log "Installing Fisher and Tide..."
-  fish -c "
-    if not functions -q fisher
-      curl -fsSL --connect-timeout 20 --max-time 120 ${FISHER_INSTALL_URL} | source
-    end
-    fisher install jorgebucaran/fisher ${TIDE_PLUGIN}
-  " </dev/null
-  FISHER_TIDE_INSTALLED=1
+  if command -v git >/dev/null 2>&1; then
+    log "Installing Fisher and Tide..."
+    fish -c "
+      if not functions -q fisher
+        curl -fsSL --connect-timeout 20 --max-time 120 ${FISHER_INSTALL_URL} | source
+      end
+      fisher install jorgebucaran/fisher ${TIDE_PLUGIN}
+    " </dev/null
+    FISHER_TIDE_INSTALLED=1
+    return
+  fi
+
+  install_fisher_and_tide_from_archives
 }
 
 is_interactive_fish_parent() {
@@ -779,9 +1184,10 @@ PY
 }
 
 main() {
+  ensure_local_bin_dir
+  install_runtime_deps
   resolve_repo_dir
   ensure_repo_dir
-  install_runtime_deps
   ensure_user_bin_dirs_in_path
   install_fish
   install_nerd_fonts
