@@ -321,10 +321,11 @@ install_rootless_curl() {
 install_rootless_tar() {
   local dest="${LOCAL_BIN}/tar"
 
-  if command -v tar >/dev/null 2>&1; then
-    return 0
-  fi
-  if [[ -x "${dest}" ]]; then
+  if [[ -x /usr/bin/tar || -x /bin/tar ]]; then
+    if [[ -e "${dest}" ]]; then
+      rm -f "${dest}"
+      log "Removed ${dest}; using system tar."
+    fi
     return 0
   fi
   if ! command -v python3 >/dev/null 2>&1; then
@@ -364,10 +365,11 @@ EOF
 install_rootless_unzip() {
   local dest="${LOCAL_BIN}/unzip"
 
-  if command -v unzip >/dev/null 2>&1; then
-    return 0
-  fi
-  if [[ -x "${dest}" ]]; then
+  if [[ -x /usr/bin/unzip || -x /bin/unzip ]]; then
+    if [[ -e "${dest}" ]]; then
+      rm -f "${dest}"
+      log "Removed ${dest}; using system unzip."
+    fi
     return 0
   fi
   if ! command -v python3 >/dev/null 2>&1; then
@@ -379,15 +381,15 @@ install_rootless_unzip() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -eq 5 && "$1" == "-j" && "$2" == "-q" && "$4" == "-d" ]]; then
-  python3 - "$3" "$5" "$4" <<'PY'
+if [[ $# -eq 6 && "$1" == "-j" && "$2" == "-q" && "$5" == "-d" ]]; then
+  python3 - "${3}" "${4}" "${6}" <<'PY'
 import sys
 import zipfile
 from pathlib import Path
 
 archive = sys.argv[1]
-dest = Path(sys.argv[3])
 member = sys.argv[2]
+dest = Path(sys.argv[3])
 dest.mkdir(parents=True, exist_ok=True)
 with zipfile.ZipFile(archive) as zf:
     dest.joinpath(Path(member).name).write_bytes(zf.read(member))
@@ -409,24 +411,14 @@ EOF
 }
 
 install_rootless_runtime_deps() {
-  local dep failed=0
+  local failed=0
 
-  for dep in curl tar unzip; do
-    if command -v "${dep}" >/dev/null 2>&1; then
-      continue
-    fi
-    case "${dep}" in
-      curl)
-        install_rootless_curl || failed=1
-        ;;
-      tar)
-        install_rootless_tar || failed=1
-        ;;
-      unzip)
-        install_rootless_unzip || failed=1
-        ;;
-    esac
-  done
+  if ! command -v curl >/dev/null 2>&1; then
+    install_rootless_curl || failed=1
+  fi
+
+  install_rootless_tar || failed=1
+  install_rootless_unzip || failed=1
 
   return "${failed}"
 }
@@ -452,6 +444,7 @@ missing_runtime_packages() {
 install_runtime_deps() {
   local needed=()
   local pkg_manager
+  local had_missing=0
 
   ensure_local_bin_dir
 
@@ -462,18 +455,21 @@ install_runtime_deps() {
     log "fc-cache not found; font cache refresh will be skipped."
   fi
 
-  if runtime_deps_satisfied; then
-    log "Fish runtime dependencies already installed."
-    return
+  if ! runtime_deps_satisfied; then
+    had_missing=1
+    needed=($(missing_runtime_packages))
+    log "Missing runtime dependencies: ${needed[*]}"
   fi
 
-  needed=($(missing_runtime_packages))
-  log "Missing runtime dependencies: ${needed[*]}"
   log "Trying rootless installs into ${LOCAL_BIN}..."
   install_rootless_runtime_deps || true
 
   if runtime_deps_satisfied; then
-    log "Fish runtime dependencies satisfied via rootless install."
+    if [[ "${had_missing}" -eq 1 ]]; then
+      log "Fish runtime dependencies satisfied via rootless install."
+    else
+      log "Fish runtime dependencies already installed."
+    fi
     return
   fi
 
