@@ -2,3 +2,4 @@
 .ci-timings
 test_providers.sh
 config.local.fish
+llm/skills/this-cluster
