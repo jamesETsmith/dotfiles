@@ -55,6 +55,14 @@ When enabling profiling, default to these profiler args unless the user specifie
 --profiler-config.torch_profiler_dump_cuda_time_total true
 ```
 
+For `vllm bench serve` profiling:
+
+- Add `--profile` to the benchmark so profiling starts after benchmark warmups and covers the measured requests.
+- Set `--profiler-config.profiler torch` and an absolute `torch_profiler_dir` on the server.
+- For a containerized server, bind-mount the profiler directory to a persistent host artifact directory.
+- Preserve both gzip-compressed Perfetto traces and CUDA-time-total text tables, and fail the run if either output type is missing.
+- Record trace filenames and sizes in an artifact manifest because full-request traces can be large.
+
 ## Project Organization
 
 Keep logs, artifacts, Dockerfiles, traces, configs, and reports in well-organized subdirectories of the project. Use a stable layout such as:

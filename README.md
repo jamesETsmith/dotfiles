@@ -16,7 +16,7 @@ curl -fsSL https://raw.githubusercontent.com/jamesETsmith/dotfiles/main/setup-zs
 
 ### Rust CLI Environment
 
-Installs Rust via [rustup](https://rustup.rs/) and a curated set of cargo tools: ripgrep, bat, eza, bottom, hyperfine, sd, tokei, git-delta, zellij, and Yazi. The script prefers prebuilt binaries through [cargo-binstall](https://github.com/cargo-bins/cargo-binstall), falls back to Cargo builds when needed, and verifies that each expected command is available. It also drops config files and shell aliases.
+Installs Rust via [rustup](https://rustup.rs/) and a curated set of tools: ripgrep, bat, eza, bottom, hyperfine, sd, tokei, git-delta, zellij, Yazi, and leaf. The script prefers prebuilt binaries through [cargo-binstall](https://github.com/cargo-bins/cargo-binstall), falls back to Cargo builds when needed, and verifies that each expected command is available. It also drops config files and shell aliases.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jamesETsmith/dotfiles/main/setup-rust-env.sh | bash
@@ -54,7 +54,7 @@ cd dotfiles
 | Script              | Highlights                                                                                                                                     |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `setup-zsh.sh`      | Installs zsh, Oh My Zsh, zsh-autosuggestions, zsh-syntax-highlighting, Starship prompt, uv, writes `.zshrc`, sets zsh as default shell         |
-| `setup-rust-env.sh` | Installs build deps, Rust toolchain, ripgrep, bat, eza, bottom, hyperfine, sd, tokei, git-delta, zellij, yazi-build, writes tool configs and shell aliases |
+| `setup-rust-env.sh` | Installs build deps, Rust toolchain, ripgrep, bat, eza, bottom, hyperfine, sd, tokei, git-delta, zellij, Yazi, leaf, writes tool configs and shell aliases |
 | `setup-vim.sh`      | Installs Vim, links `.vimrc`, installs vim-plug, and installs Vim plugins declared in `.vimrc`                                                  |
 | `setup-fish.sh`     | Installs latest Fish from GitHub release binaries, rootlessly bootstraps missing curl/tar/unzip into `~/.local/bin`, installs Hack Nerd Font Mono + MesloLGS NF, installs Fisher and Tide, installs uv, links Fish config, and applies saved Tide prompt settings               |
 

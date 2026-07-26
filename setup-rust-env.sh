@@ -9,6 +9,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
 RUSTUP_INIT_URL="https://sh.rustup.rs"
 CARGO_BINSTALL_INSTALLER_URL="https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh"
+LEAF_INSTALLER_URL="https://raw.githubusercontent.com/RivoLink/leaf/main/scripts/install.sh"
 INSTALL_BUILD_DEPS=0
 RUST_TOOLS=(
   ripgrep
@@ -269,6 +270,21 @@ install_yazi() {
   fi
 }
 
+install_leaf() {
+  if command -v leaf >/dev/null 2>&1; then
+    log "leaf already installed; skipping."
+    return
+  fi
+
+  log "Installing leaf from its release installer..."
+  curl --proto '=https' --tlsv1.2 -fsSL "${LEAF_INSTALLER_URL}" | sh
+
+  if ! command -v leaf >/dev/null 2>&1; then
+    log "leaf installation completed without providing leaf."
+    return 1
+  fi
+}
+
 install_rust_tools() {
   local crate
   ensure_executable_tmpdir
@@ -279,6 +295,7 @@ install_rust_tools() {
     install_rust_tool "${crate}"
   done
   install_yazi
+  install_leaf
 }
 
 ensure_cargo_bin_in_path_or_shell_rcs() {
