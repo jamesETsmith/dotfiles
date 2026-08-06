@@ -19,6 +19,7 @@ RUST_TOOLS=(
   hyperfine
   sd
   tokei
+  ast-grep
   git-delta
   zellij
 )
@@ -30,6 +31,7 @@ declare -A RUST_TOOL_COMMANDS=(
   [hyperfine]=hyperfine
   [sd]=sd
   [tokei]=tokei
+  ["ast-grep"]=ast-grep
   ["git-delta"]=delta
   [zellij]=zellij
 )
