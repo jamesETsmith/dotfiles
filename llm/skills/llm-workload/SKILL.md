@@ -26,7 +26,32 @@ Before running or designing the workload, check with the user about model weight
 3. If not, what is the expected download or staging path, and who owns access credentials?
 4. Is the cache persistent across runs, or will it be reclaimed when the job exits?
 
-Do not assume weights can be downloaded cheaply or quickly. Prefer using weights already staged on the target node.
+Do not assume weights can be downloaded cheaply or quickly. Prefer using weights already staged on the target node. For sharded checkpoints, validate every filename referenced by the weight index rather than treating the snapshot directory's presence as proof that staging completed. Report missing shards and block expensive submission until the checkpoint is complete.
+
+Avoid memory-mapped tensor loading whenever the runtime provides a practical alternative, especially for weights on network filesystems. Prefer eager or sequential whole-file loading, validate that the resolved runtime configuration actually disables memory mapping, and monitor initial shard throughput before committing to a long run. Record the selected loading strategy in reproducibility metadata.
+
+When large weights are on network storage, inspect node-local NVMe before accepting slow startup. If enough space exists, stage checkpoint files with bounded parallel copies, copy metadata and refs, validate every indexed shard and file size, and point the runtime cache at the local copy. Check `/dev/shm` capacity before proposing RAM staging; do not assume it can hold the checkpoint.
+
+## Model Identity and Local Weights
+
+Always use the model's standard registry identifier in workload recipes and benchmark metadata, such as `amd/GLM-5.2-MXFP4`, rather than a cache directory, snapshot path, symlink target, or other machine-specific filesystem path. Dashboards and result adapters commonly preserve the recipe's model field verbatim, so putting a local path there creates the wrong model identity in packaged and published results.
+
+Keep logical model identity separate from physical weight resolution:
+
+- Set the recipe's model field and benchmark `--model` value to the standard model identifier.
+- Point Hugging Face at an existing cache with `HF_HOME`, `HF_HUB_CACHE`, or the harness's cache-volume and bind-mount options.
+- Set `HF_HUB_OFFLINE=1` or use the relevant CLI offline or local-files-only option when downloads must be prohibited.
+- Pin a revision or commit through the recipe or CLI when reproducibility requires an exact snapshot.
+- If a runner cannot resolve a standard identifier from the staged cache, add a distinct runtime-only weight-path option or mapping in the runner. Do not overload the model identity field with the path.
+- Record both the standard model identifier and resolved local snapshot path in reproducibility metadata.
+
+Before submission, parse the final recipe and verify that generated server and benchmark commands retain the standard identifier while the configured cache resolves to the intended local snapshot. Before packaging or publishing, inspect the workload artifact and confirm its model field is still the standard identifier.
+
+When a workload is intended to exercise a non-default model implementation, do not infer the selected implementation from the image commit, optimization environment variables, or resolved architecture name alone. Capture the explicit model-class override in the recipe, inspect the generated server command for correct quoting, and require runtime log evidence that the override was applied. Treat results from the default class as invalid for claims about the alternate implementation.
+
+For fixed-output performance workloads, verify the generated benchmark command includes `--ignore-eos`, then validate every raw result has the expected successful request count, zero failures, and exactly `num_prompts * output_len` generated tokens. Treat early EOS, HTTP 400 responses, and partial request counts as invalid results. Set server `max_model_len` above `input_len + output_len` to allow tokenizer or protocol overhead, rather than using the exact sum as the limit.
+
+Validate lm-eval output recursively because results are commonly nested under a sanitized model-name directory. Keep variant execution resumable so a post-run harness validation error can be corrected without rerunning already validated expensive variants.
 
 ## Workload Definition
 
@@ -62,25 +87,25 @@ For `vllm bench serve` profiling:
 - For a containerized server, bind-mount the profiler directory to a persistent host artifact directory.
 - Preserve both gzip-compressed Perfetto traces and CUDA-time-total text tables, and fail the run if either output type is missing.
 - Record trace filenames and sizes in an artifact manifest because full-request traces can be large.
+- For text-table comparisons, remove overlapping annotation rows such as `execute_context_*`, renormalize displayed percentages, and state any profiler row-limit coverage.
+- For cross-hardware comparisons, document differences in model weights, quantization, software versions, parallelism, scheduler settings, available ranks, and generated token counts before interpreting kernel times.
 
 ## Project Organization
 
-Keep logs, artifacts, Dockerfiles, traces, configs, and reports in well-organized subdirectories of the project. Use a stable layout such as:
+Give each experiment its own descriptive, named subdirectory. Within that experiment directory, use these standard subdirectories only when they contain relevant files:
 
 ```text
-workloads/
-  <workload>.yaml
-artifacts/
-  <run-id>/
-    logs/
-    traces/
-    results/
-    docker/
-    configs/
-    reports/
+<experiment-name>/
+  docker/   # custom Dockerfiles and Docker build inputs
+  configs/  # YAML workload and runtime configuration files
+  traces/   # profiling traces and processed trace tables
+  logs/     # stdout, stderr, server, benchmark, and scheduler logs
+  data/     # CSV, JSON, and other machine-readable outputs
+  scripts/  # launch, processing, validation, and analysis scripts
+  figures/  # generated plots and figures
 ```
 
-Do not scatter generated outputs across the repository root. If the project already has a convention for run artifacts, follow it.
+Do not create empty standard subdirectories. Create each directory when its first artifact is written. Store submission records and scheduler-default output under `logs/`, moving default scheduler files there after dispatch if Slurm cannot target that directory safely. Do not scatter generated outputs across the project root. If a project already has a stricter convention, preserve it while maintaining one isolated directory per experiment.
 
 ## Run Report
 
@@ -92,3 +117,9 @@ At the end of a workload run, summarize:
 - Accuracy metrics captured, including task names, scores, and whether results are partial or full evals.
 - Artifact locations for logs, traces, raw results, Dockerfiles, and reports.
 - Failures, retries, missing data, and any reasons the run is not comparable to prior runs.
+
+When publishing results to an issue tracker, prepare the exact executed YAML, unmodified
+raw JSON results, and a consolidated CSV that preserves every JSON field. Validate the
+CSV field-for-field against its source JSON files. Confirm that the available integration
+supports binary attachments before promising an upload; if it does not, post the summary
+and leave a clearly identified local attachment set for manual upload.
