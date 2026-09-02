@@ -40,7 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/jamesETsmith/dotfiles/main/setup-fi
 
 ### Remote Crush Setup
 
-From a local clone, interactively configures a remote Linux host with the Fish setup above, installs a sufficiently recent Go toolchain rootlessly under `~/.local` when needed, installs the local Crush version, and securely copies the local Crush config and `~/.config/fish/config.local.fish`. Existing remote configs are backed up before replacement.
+From a local clone, interactively configures a remote Linux host with the Fish setup above, installs the shared LLM instructions and skills into `~/.agents`, installs a sufficiently recent Go toolchain rootlessly under `~/.local` when needed, installs the local Crush version, and securely copies the local Crush config and `~/.config/fish/config.local.fish`. Existing remote configs are backed up before replacement.
 
 ```bash
 ./setup-remote-crush.sh user@hostname

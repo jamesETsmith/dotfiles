@@ -177,6 +177,8 @@ validate_local_setup() {
   local required_path
   local required_paths=(
     "setup-fish.sh"
+    "install-llm-agents-helpers.sh"
+    "llm/AGENTS.md"
     "fish/config.fish"
     "fish/conf.d/path.fish"
     "fish/conf.d/rust-tools.fish"
@@ -243,7 +245,7 @@ run_fish_setup() {
   chmod 700 "${LOCAL_TEMP_DIR}"
 
   tar -C "${SCRIPT_DIR}" -czf "${LOCAL_TEMP_DIR}/fish-setup.tar.gz" \
-    setup-fish.sh fish fontconfig/50-terminal-nerd-font.conf
+    setup-fish.sh install-llm-agents-helpers.sh fish fontconfig/50-terminal-nerd-font.conf llm
 
   "${SSH_ARGS[@]}" "${DESTINATION}" bash -s -- "${remote_setup_dir}" <<'REMOTE'
 set -euo pipefail
@@ -259,6 +261,7 @@ cd "$HOME/$1"
 tar -xzf fish-setup.tar.gz
 rm -f fish-setup.tar.gz
 bash setup-fish.sh
+bash install-llm-agents-helpers.sh
 REMOTE
 
   rm -rf "${LOCAL_TEMP_DIR}"
@@ -403,6 +406,9 @@ crush_bin="$HOME/.local/bin/crush"
 [[ -x "$crush_bin" ]]
 [[ "$($crush_bin --version)" == *"$expected_version" ]]
 [[ -f "$crush_path" && -f "$fish_path" ]]
+[[ -L "$HOME/.agents/AGENTS.md" && -L "$HOME/.agents/skills" ]]
+[[ "$(readlink -f "$HOME/.agents/AGENTS.md")" == "$HOME/.local/share/dotfiles/llm/AGENTS.md" ]]
+[[ "$(readlink -f "$HOME/.agents/skills")" == "$HOME/.local/share/dotfiles/llm/skills" ]]
 [[ "$(stat -c '%a' "$crush_path")" == "600" ]]
 [[ "$(stat -c '%a' "$fish_path")" == "600" ]]
 
@@ -410,6 +416,7 @@ printf 'Remote host: %s\n' "$(hostname)"
 printf 'Crush: %s (%s)\n' "$($crush_bin --version)" "$crush_bin"
 printf 'Crush config: %s (600)\n' "$crush_path"
 printf 'Fish local config: %s (600)\n' "$fish_path"
+printf 'LLM helpers: %s\n' "$HOME/.agents"
 REMOTE
 }
 
