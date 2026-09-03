@@ -44,7 +44,11 @@ From a local clone, interactively configures a remote Linux host with the Fish s
 
 ```bash
 ./setup-remote-crush.sh user@hostname
+./setup-remote-crush.sh -J jump-host user@hostname
+./setup-remote-crush.sh --ssh-arg=-o --ssh-arg=StrictHostKeyChecking=accept-new user@hostname
 ```
+
+Use `--ssh-arg` repeatedly for additional options accepted by both `ssh` and `scp`.
 
 ## Alternative: Clone and Run
 

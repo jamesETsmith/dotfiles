@@ -10,6 +10,7 @@ CRUSH_VERSION=""
 GO_VERSION="1.26.6"
 SSH_PORT=""
 IDENTITY_FILE=""
+PROXY_JUMP=""
 ASSUME_YES=0
 DESTINATION=""
 LOCAL_TEMP_DIR=""
@@ -17,6 +18,7 @@ REMOTE_TEMP_DIR=""
 REMOTE_CONFIG_NAME=""
 SSH_ARGS=()
 SCP_ARGS=()
+SHARED_SSH_ARGS=()
 
 log() {
   printf '[%s] %s\n' "${SCRIPT_NAME}" "$*"
@@ -29,6 +31,8 @@ Usage: ${SCRIPT_NAME} [options] [user@]hostname
 Options:
   -p, --port PORT           SSH port
   -i, --identity FILE       SSH identity file
+  -J, --proxy-jump HOST     Connect through an SSH jump host
+      --ssh-arg ARG         Pass an argument to both ssh and scp (repeatable)
       --crush-config FILE   Local crushrc or crush.json
       --fish-config FILE    Local config.local.fish
       --crush-version VER   Crush version, such as v0.91.0
@@ -75,6 +79,16 @@ parse_args() {
       -i | --identity)
         (($# >= 2)) || fail "$1 requires a value."
         IDENTITY_FILE="$2"
+        shift 2
+        ;;
+      -J | --proxy-jump)
+        (($# >= 2)) || fail "$1 requires a value."
+        PROXY_JUMP="$2"
+        shift 2
+        ;;
+      --ssh-arg)
+        (($# >= 2)) || fail "$1 requires a value."
+        SHARED_SSH_ARGS+=("$2")
         shift 2
         ;;
       --crush-config)
@@ -155,6 +169,18 @@ resolve_inputs() {
   validate_safe_value "SSH destination" "${DESTINATION}"
   validate_safe_value "Crush config path" "${CRUSH_CONFIG}"
   validate_safe_value "Fish config path" "${FISH_LOCAL_CONFIG}"
+  validate_safe_value "SSH proxy jump" "${PROXY_JUMP}"
+  for command_path in "${SHARED_SSH_ARGS[@]}"; do
+    validate_safe_value "SSH argument" "${command_path}"
+  done
+
+  SSH_ARGS+=("${SHARED_SSH_ARGS[@]}")
+  SCP_ARGS+=("${SHARED_SSH_ARGS[@]}")
+
+  if [[ -n "${PROXY_JUMP}" ]]; then
+    SSH_ARGS+=("-J" "${PROXY_JUMP}")
+    SCP_ARGS+=("-J" "${PROXY_JUMP}")
+  fi
 
   if [[ -n "${SSH_PORT}" ]]; then
     [[ "${SSH_PORT}" =~ ^[0-9]+$ ]] || fail "SSH port must be numeric."
