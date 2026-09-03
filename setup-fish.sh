@@ -40,6 +40,7 @@ HACK_NERD_FONT_FILES=(
   "HackNerdFontMono-BoldItalic.ttf"
 )
 LOCAL_BIN="${HOME}/.local/bin"
+FISH_BIN="${LOCAL_BIN}/fish"
 DEPS_CACHE="${XDG_CACHE_HOME:-${HOME}/.cache}/dotfiles/deps"
 STATIC_CURL_BASE_URL="https://github.com/moparisthebest/static-curl/releases/latest/download"
 
@@ -424,9 +425,9 @@ install_rootless_runtime_deps() {
 }
 
 runtime_deps_satisfied() {
-  command -v curl >/dev/null 2>&1 \
-    && command -v tar >/dev/null 2>&1 \
-    && command -v unzip >/dev/null 2>&1
+  command -v curl >/dev/null 2>&1 &&
+    command -v tar >/dev/null 2>&1 &&
+    command -v unzip >/dev/null 2>&1
 }
 
 missing_runtime_packages() {
@@ -457,7 +458,7 @@ install_runtime_deps() {
 
   if ! runtime_deps_satisfied; then
     had_missing=1
-    needed=($(missing_runtime_packages))
+    read -ra needed <<<"$(missing_runtime_packages)"
     log "Missing runtime dependencies: ${needed[*]}"
   fi
 
@@ -473,7 +474,7 @@ install_runtime_deps() {
     return
   fi
 
-  needed=($(missing_runtime_packages))
+  read -ra needed <<<"$(missing_runtime_packages)"
   log "Still missing runtime dependencies: ${needed[*]}"
 
   pkg_manager="$(detect_pkg_manager)"
@@ -499,7 +500,7 @@ install_runtime_deps() {
   esac
 
   if ! runtime_deps_satisfied; then
-    needed=($(missing_runtime_packages))
+    read -ra needed <<<"$(missing_runtime_packages)"
     log "Runtime dependencies still missing after install: ${needed[*]}"
     exit 1
   fi
@@ -525,12 +526,15 @@ resolve_fish_arch() {
 
 installed_fish_version() {
   local fish_bin="$1"
+  local version
 
   if [[ ! -x "${fish_bin}" ]]; then
     return 1
   fi
 
-  "${fish_bin}" --version 2>/dev/null | sed -n 's/^fish, version //p'
+  version="$("${fish_bin}" --version 2>/dev/null)" || return 1
+  "${fish_bin}" -c 'exit 0' </dev/null >/dev/null 2>&1 || return 1
+  printf '%s\n' "${version}" | sed -n 's/^fish, version //p'
 }
 
 resolve_latest_fish_version() {
@@ -577,19 +581,20 @@ ensure_user_bin_dirs_in_path() {
 }
 
 install_fish() {
-  local local_fish="${HOME}/.local/bin/fish"
   local fish_version
   local installed_version
   local arch archive_name release_url temp_dir
 
   fish_version="$(resolve_fish_version)"
 
-  if installed_version="$(installed_fish_version "${local_fish}")"; then
+  if installed_version="$(installed_fish_version "${FISH_BIN}")"; then
     if [[ "${installed_version}" == "${fish_version}" ]]; then
-      log "fish ${fish_version} already installed at ${local_fish}."
+      log "fish ${fish_version} already installed at ${FISH_BIN}."
       return
     fi
     log "Upgrading fish ${installed_version} -> ${fish_version}..."
+  elif [[ -e "${FISH_BIN}" ]]; then
+    log "Replacing unusable fish binary at ${FISH_BIN}..."
   fi
 
   ensure_user_bin_dirs_in_path
@@ -607,15 +612,15 @@ install_fish() {
     exit 1
   fi
   dotfiles_extract_xz "${temp_dir}/${archive_name}" "${temp_dir}"
-  install -m 755 "${temp_dir}/fish" "${local_fish}"
+  install -m 755 "${temp_dir}/fish" "${FISH_BIN}"
   rm -rf "${temp_dir}"
 
-  if ! installed_version="$(installed_fish_version "${local_fish}")"; then
-    log "fish install failed; ${local_fish} is not executable."
+  if ! installed_version="$(installed_fish_version "${FISH_BIN}")"; then
+    log "fish install failed; ${FISH_BIN} cannot start."
     exit 1
   fi
 
-  log "Installed fish ${installed_version} at ${local_fish}."
+  log "Installed fish ${installed_version} at ${FISH_BIN}."
 }
 
 install_uv() {
@@ -993,7 +998,7 @@ install_fisher_and_tide_from_archives() {
   tide_ref="${TIDE_PLUGIN#*@}"
 
   log "Installing Fisher and Tide from GitHub archives..."
-  fish -c "
+  "${FISH_BIN}" -c "
     if not functions -q fisher
       curl -fsSL --connect-timeout 20 --max-time 120 ${FISHER_INSTALL_URL} | source
     end
@@ -1007,14 +1012,14 @@ install_fisher_and_tide_from_archives() {
 install_fisher_and_tide() {
   FISHER_TIDE_INSTALLED=0
 
-  if fish -c "functions -q fisher; and functions -q tide" </dev/null; then
+  if "${FISH_BIN}" -c "functions -q fisher; and functions -q tide" </dev/null; then
     log "Fisher and Tide already installed."
     return
   fi
 
   if command -v git >/dev/null 2>&1; then
     log "Installing Fisher and Tide..."
-    fish -c "
+    "${FISH_BIN}" -c "
       if not functions -q fisher
         curl -fsSL --connect-timeout 20 --max-time 120 ${FISHER_INSTALL_URL} | source
       end
@@ -1049,7 +1054,7 @@ queue_fish_session_refresh() {
 }
 
 reload_tide_prompt() {
-  if ! fish -c "functions -q tide" </dev/null 2>&1; then
+  if ! "${FISH_BIN}" -c "functions -q tide" </dev/null 2>&1; then
     log "Tide not installed; skipping prompt reload."
     return
   fi

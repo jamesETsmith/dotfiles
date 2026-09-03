@@ -24,6 +24,11 @@ jobs:
           key: fish-prebuilt-v1-${{ hashFiles('setup-fish.sh', '.github/workflows/fish_setup.yaml') }}
           restore-keys: |
             fish-prebuilt-v1-
+      - name: Seed unusable cached Fish binary
+        run: |
+          mkdir -p "${FISH_TEST_PATH}"
+          printf '%s\n' '#!/usr/bin/env bash' 'if [[ "$1" == "--version" ]]; then echo "fish, version 4.8.1"; exit 0; fi' 'exit 127' >"${FISH_TEST_PATH}/fish"
+          chmod +x "${FISH_TEST_PATH}/fish"
       - name: Run setup-fish.sh
         run: |
           mkdir -p "${FISH_TEST_HOME}"
