@@ -45,7 +45,7 @@ Keep logical model identity separate from physical weight resolution:
 - Set `HF_HUB_OFFLINE=1` or use the relevant CLI offline or local-files-only option when downloads must be prohibited.
 - When mounting a read-only Hugging Face cache for a model that uses remote code, set `HF_MODULES_CACHE` to a separate writable path and verify startup remains offline.
 - Pin a revision or commit through the recipe or CLI when reproducibility requires an exact snapshot.
-- If a runner cannot resolve a standard identifier from the staged cache, add a distinct runtime-only weight-path option or mapping in the runner. Do not overload the model identity field with the path.
+- If a runner cannot resolve a standard identifier from the staged cache, pass the local weight path through a distinct environment variable or CLI override supported by the harness. Do not overload the model identity field with the path.
 - Record both the standard model identifier and resolved local snapshot path in reproducibility metadata.
 
 Before submission, parse the final recipe and verify that generated server and benchmark commands retain the standard identifier while the configured cache resolves to the intended local snapshot. Before packaging or publishing, inspect the workload artifact and confirm its model field is still the standard identifier.
