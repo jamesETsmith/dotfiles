@@ -28,6 +28,8 @@ Before running or designing the workload, check with the user about model weight
 
 Do not assume weights can be downloaded cheaply or quickly. Prefer using weights already staged on the target node. For sharded checkpoints, validate every filename referenced by the weight index rather than treating the snapshot directory's presence as proof that staging completed. Report missing shards and block expensive submission until the checkpoint is complete.
 
+For scope-only or planning phases that do not submit work, record unresolved weight location, completeness, credentials, and cache persistence as explicit execution prerequisites rather than blocking the analysis. Resolve and validate them before any expensive submission.
+
 Avoid memory-mapped tensor loading whenever the runtime provides a practical alternative, especially for weights on network filesystems. Prefer eager or sequential whole-file loading, validate that the resolved runtime configuration actually disables memory mapping, and monitor initial shard throughput before committing to a long run. Record the selected loading strategy in reproducibility metadata.
 
 When large weights are on network storage, inspect node-local NVMe before accepting slow startup. If enough space exists, stage checkpoint files with bounded parallel copies, copy metadata and refs, validate every indexed shard and file size, and point the runtime cache at the local copy. Check `/dev/shm` capacity before proposing RAM staging; do not assume it can hold the checkpoint.
@@ -41,6 +43,7 @@ Keep logical model identity separate from physical weight resolution:
 - Set the recipe's model field and benchmark `--model` value to the standard model identifier.
 - Point Hugging Face at an existing cache with `HF_HOME`, `HF_HUB_CACHE`, or the harness's cache-volume and bind-mount options.
 - Set `HF_HUB_OFFLINE=1` or use the relevant CLI offline or local-files-only option when downloads must be prohibited.
+- When mounting a read-only Hugging Face cache for a model that uses remote code, set `HF_MODULES_CACHE` to a separate writable path and verify startup remains offline.
 - Pin a revision or commit through the recipe or CLI when reproducibility requires an exact snapshot.
 - If a runner cannot resolve a standard identifier from the staged cache, add a distinct runtime-only weight-path option or mapping in the runner. Do not overload the model identity field with the path.
 - Record both the standard model identifier and resolved local snapshot path in reproducibility metadata.
@@ -62,6 +65,8 @@ When creating or modifying a workload:
 3. Include server configuration, perf benchmark configuration, and accuracy eval configuration in the recipe instead of separate shell fragments.
 4. Make the optimization target explicit: throughput, latency, cost per token, accuracy, function-calling quality, long-context behavior, or reliability.
 5. Validate the recipe with the harness's parser or smoke tests before launching expensive GPU work.
+6. For context and concurrency sweeps, anchor context lengths to the production range and use the measured KV token capacity to choose concurrency points that cross the expected pressure boundary. Do not substitute extreme context lengths for sufficient concurrency without an explicit long-context objective.
+7. Before launching directly on a compute node, verify that allocated GPUs are idle and have negligible VRAM use. Treat scheduler allocation as insufficient proof of GPU isolation when containers can access host-wide device nodes.
 
 For `perf-eval`-style workloads, prefer the established blocks:
 
