@@ -28,6 +28,16 @@ Before running or designing the workload, check with the user about model weight
 
 Do not assume weights can be downloaded cheaply or quickly. Prefer using weights already staged on the target node.
 
+## Model Identity and Local Weights
+
+Keep the model identifier separate from the filesystem location of its weights:
+
+- Set the recipe's model name to the stable upstream identifier, such as `nvidia/Kimi-K3-NVFP4`, so results remain comparable and post-processing can identify the model.
+- Never put an absolute or machine-specific weights path in the recipe's model-name field.
+- Supply a local weights path at launch time through an environment variable or CLI override supported by the workload harness.
+- If the harness distinguishes the served model name from the weights path, explicitly keep the canonical identifier as the served model name.
+- Record both the canonical model identifier and the effective local weights path in the run metadata.
+
 ## Workload Definition
 
 When creating or modifying a workload:
