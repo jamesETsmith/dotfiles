@@ -56,6 +56,8 @@ For fixed-output performance workloads, verify the generated benchmark command i
 
 Validate lm-eval output recursively because results are commonly nested under a sanitized model-name directory. Keep variant execution resumable so a post-run harness validation error can be corrected without rerunning already validated expensive variants.
 
+Before a `perf-eval` accuracy run, validate the recipe with the exact Python environment that will execute `parse_workload.py`, and confirm both `import lm_eval` and the `lm_eval` CLI work there. A pinned vLLM serving image may omit the evaluation harness. If a separate `uv` environment is needed, create and validate it before model startup, preserve its resolved version and full freeze, and mount it at the same in-container path where it was created because activation scripts and console-script shebangs embed that absolute path. Keep the serving image digest unchanged and record the harness environment separately.
+
 ## Workload Definition
 
 When creating or modifying a workload:
@@ -94,6 +96,20 @@ For `vllm bench serve` profiling:
 - Record trace filenames and sizes in an artifact manifest because full-request traces can be large.
 - For text-table comparisons, remove overlapping annotation rows such as `execute_context_*`, renormalize displayed percentages, and state any profiler row-limit coverage.
 - For cross-hardware comparisons, document differences in model weights, quantization, software versions, parallelism, scheduler settings, available ranks, and generated token counts before interpreting kernel times.
+- When a profiling objective requires prefill and decode in the same trace,
+  validate every rank's gzip trace, not just the aggregate CUDA-time table.
+  Count `execute_context_*` events from the CPU `user_annotation` category;
+  do not double-count mirrored `gpu_user_annotation` events. Require at least
+  one context-token-positive annotation and a later
+  `execute_context_0(0)_generation_*` annotation in each trace. Report counts
+  and first/last timestamps relative to the first phase annotation.
+- Establish kernel evidence by checking named prefill and decode kernel events
+  whose timestamps fall inside the corresponding CPU annotation spans. This
+  handles kernels whose phase is clear from nesting even when their backend
+  name differs by concurrency. Preserve a per-rank machine-readable phase CSV
+  and independently verify copied gzip streams, source/copy checksums, unique
+  names, and byte totals before declaring a consolidated profile collection
+  complete.
 
 ## Project Organization
 
