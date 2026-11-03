@@ -91,6 +91,12 @@ testpaths = ["tests"]
 
 Prefer a `src/` layout for installable packages. For one-off analyses, place reusable code in a named package or module and notebooks in `notebooks/`; do not put generated figures, caches, or large data files under source control unless the project explicitly requires it.
 
+Before running repository-wide checks in an existing project, identify vendored
+code, generated run artifacts, large caches, and permission-restricted output
+directories. Add justified tool exclusions in `pyproject.toml`, or scope Ruff
+and Ty to the new analysis and test directories. Do not let unrelated vendored
+or generated files obscure diagnostics for the analysis being added.
+
 ## Verification
 
 After setup or dependency changes:
