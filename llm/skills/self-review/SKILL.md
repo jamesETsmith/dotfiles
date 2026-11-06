@@ -1,14 +1,15 @@
 ---
 name: self-review
-description: Build a local GitHub-style Files Changed preview and a hunk-complete defense report for a branch or working tree. Use for first-stage self-review before requesting human, PR, Bugbot, security, or multi-agent review.
+description: Build a local GitHub-style Files Changed preview and a hunk-complete defense report for a branch or working tree, rendered together with each defense beside its hunks. Use for first-stage self-review before requesting human, PR, Bugbot, security, or multi-agent review.
 ---
 
 # Self Review
 
 Perform an adversarial first-stage review of the current change. Produce:
 
-1. a local side-by-side Files Changed page; and
-2. a Markdown defense report that accounts for every changed hunk.
+1. a local side-by-side Files Changed page;
+2. a Markdown defense report that accounts for every changed hunk; and
+3. a combined review page that shows each defense entry beside its hunks.
 
 The goal is to catch problems, not to justify the diff after the fact. If a
 change has no sound reason, mark it for removal or correction.
@@ -71,7 +72,9 @@ handles empty/binary/rename/mode changes, rejects unresolved index entries, and
 fails if the tree changes during generation. Verify all files exist and the
 manifest counts agree with metadata. `npx` may fetch the pinned
 `diff2html-cli` renderer; report a renderer/network failure instead of claiming
-the preview exists.
+the preview exists. If `npx` is not installed, run the builder under
+`uv run --no-project --with nodejs-wheel python ...`, which puts `npx` on
+`PATH`.
 
 Open the HTML in Cursor when possible. If direct file rendering is not
 available, serve the artifact directory:
@@ -83,7 +86,10 @@ uv run --no-project python <skill-dir>/scripts/build_local_diff.py \
 
 Run the server as a durable background command, read the printed URL, verify it
 with an HTTP request, and give the user a clickable link. Do not claim the page
-is visible until the URL responds.
+is visible until the URL responds. The server serves `review.html` (step 5)
+when it exists and `files-changed.html` otherwise; it reads files per request,
+so re-rendering does not require a restart. On a remote host, tell the user
+which port to forward.
 
 ## 3. Understand before defending
 
@@ -159,6 +165,40 @@ drafting, run:
 uv run --no-project python <skill-dir>/scripts/validate_report.py <artifact-dir>
 ```
 
+Then render the combined review page, which puts each ledger entry in a third
+column beside the hunks it defends, and puts the other report sections in
+collapsible panels above the diff:
+
+```bash
+uv run --no-project --with markdown python <skill-dir>/scripts/render_review.py <artifact-dir>
+```
+
+It writes `review.html` and leaves `files-changed.html` unchanged. Its JSON
+output must show empty `missing_ids` and `unknown_ids`. On the page, the
+toolbar should report every ID placed and no warnings, and IDs with no
+entry appear as red cards. Re-render after every report edit.
+
+The page depends on the report format in
+[REPORT_TEMPLATE.md](REPORT_TEMPLATE.md):
+
+- **Ledger:** the ledger heading is exactly `## Hunk defense ledger`. Each
+  entry is a `###` heading with its ID markers below the heading, and ends
+  with `**Verdict:** Keep|Revise|Remove|Unresolved`.
+- **Card placement:** a card sits beside the earliest hunk, in diff order,
+  among the IDs it lists. Every other file the entry covers gets a collapsed
+  stub that links back to the card. Group IDs from different files only when
+  the change really is a single change, such as one rename applied across its
+  importers.
+- **Other sections:** every `##` section other than the ledger becomes a
+  collapsible panel above the diff. `Executive verdict` and `Findings` start
+  open, so keep those headings unchanged and put blockers there.
+- **Width:** entries render in a narrow column. Use concise bullets, and put
+  wide tables or long logs in the Validation section rather than in an entry.
+
+Before handoff, open the page and check that cards line up with their hunks,
+that the page does not scroll sideways, and that no warnings show. Use a
+screenshot if a browser tool is available.
+
 Separate observed evidence from inference. Report tests actually run with exact
 commands/results, environment, exit code, and the reviewed snapshot-tree/diff
 hash. Check whether validation modified the tree and regenerate artifacts if it
@@ -169,6 +209,7 @@ did. Do not present expected CI coverage as completed validation.
 Run a second pass after drafting:
 
 - run `validate_report.py` to reject missing, duplicate, and unknown IDs;
+- re-render `review.html` and confirm that every ID is placed;
 - challenge every “keep” verdict;
 - search for repeated generic arguments that do not explain the actual hunk;
 - verify claims against current code and logs;
@@ -187,7 +228,7 @@ fixed or explicitly unresolved.
 
 Give the user:
 
-- the clickable Files Changed preview;
+- the clickable combined review page (`review.html`, diff plus defense notes);
 - the defense report path;
 - base and reviewed-state summary;
 - blockers and high-risk unresolved items first;

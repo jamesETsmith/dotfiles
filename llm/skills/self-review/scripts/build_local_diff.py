@@ -592,7 +592,9 @@ def serve(directory: Path, host: str, requested_port: int) -> int:
     directory = directory.resolve()
     if host not in {"127.0.0.1", "localhost", "::1"}:
         raise RuntimeError("refusing to expose review artifacts beyond loopback")
-    html = directory / "files-changed.html"
+    html = directory / "review.html"
+    if not html.is_file():
+        html = directory / "files-changed.html"
     if not html.is_file():
         raise FileNotFoundError(f"missing preview: {html}")
     handler = functools.partial(
@@ -610,7 +612,7 @@ def serve(directory: Path, host: str, requested_port: int) -> int:
         raise OSError(f"no free port in {requested_port}..{requested_port + 19}")
     cache_key = hashlib.sha256(html.read_bytes()).hexdigest()[:12]
     print(
-        f"http://{host}:{server.server_port}/files-changed.html?v={cache_key}",
+        f"http://{host}:{server.server_port}/{html.name}?v={cache_key}",
         flush=True,
     )
     try:

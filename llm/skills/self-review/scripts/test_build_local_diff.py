@@ -107,6 +107,53 @@ class LocalDiffTest(unittest.TestCase):
             )
             self.assertEqual(missing.returncode, 1)
 
+    def test_review_render_places_entries_and_reports_missing_ids(self):
+        try:
+            import markdown  # noqa: F401
+        except ImportError:
+            self.skipTest("markdown is not installed; run with --with markdown")
+        render_spec = importlib.util.spec_from_file_location(
+            "render_review", Path(__file__).with_name("render_review.py")
+        )
+        assert render_spec and render_spec.loader
+        renderer = importlib.util.module_from_spec(render_spec)
+        render_spec.loader.exec_module(renderer)
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            source = "<html><head></head><body><h1>t</h1></body></html>"
+            (directory / "files-changed.html").write_text(source)
+            (directory / "hunk-manifest.md").write_text(
+                "# Self-review hunk manifest\n\n"
+                "## **C001**: `a.py` (modified)\n\n"
+                "- **H001**: old 1-2, new 1-3\n"
+                "- **H002**: old 9-9, new 10-10\n"
+            )
+            (directory / "defense-report.md").write_text(
+                "# Self-review defense report\n\n"
+                "## Executive verdict\n\nReady.\n\n"
+                "## Hunk defense ledger\n\n"
+                "### `[C001, H001] a.py` — first change\n"
+                "<!-- self-review-id:C001 -->\n"
+                "<!-- self-review-id:H001 -->\n\n"
+                "- **Verdict:** Keep\n\n"
+                "## Validation\n\nNone.\n"
+            )
+            result = renderer.render(
+                directory,
+                directory / "defense-report.md",
+                directory / "review.html",
+            )
+            self.assertEqual(result["entries"], 1)
+            self.assertEqual(result["missing_ids"], ["H002"])
+            self.assertEqual(result["unknown_ids"], [])
+            html = (directory / "review.html").read_text()
+            self.assertIn('id="self-review-data"', html)
+            self.assertIn("first change", html)
+            self.assertIn('"verdict": "Keep"', html)
+            blob = html.split('type="application/json">', 1)[1].split("</script>", 1)[0]
+            self.assertNotIn("self-review-id", blob)
+            self.assertEqual((directory / "files-changed.html").read_text(), source)
+
 
 if __name__ == "__main__":
     unittest.main()
