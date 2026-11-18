@@ -1,0 +1,104 @@
+{
+  "sources": [
+    {
+      "name": "Hazy Research",
+      "homepage": "https://hazyresearch.stanford.edu/",
+      "strategy": "html",
+      "listing": "https://hazyresearch.stanford.edu/blog",
+      "link_regex": "^/blog/\\d{4}-\\d{2}-\\d{2}-",
+      "date_window": 300
+    },
+    {
+      "name": "vLLM",
+      "homepage": "https://vllm.ai/blog",
+      "strategy": "rss",
+      "feed": "https://vllm.ai/blog/rss.xml"
+    },
+    {
+      "name": "Liquid AI Engineering",
+      "homepage": "https://www.liquid.ai/engineering",
+      "strategy": "html",
+      "listing": "https://www.liquid.ai/engineering",
+      "link_regex": "^/blog/[a-z0-9.-]+$",
+      "date_position": "before",
+      "date_window": 300
+    },
+    {
+      "name": "Liquid AI Research",
+      "homepage": "https://www.liquid.ai/research",
+      "strategy": "html",
+      "listing": "https://www.liquid.ai/research",
+      "item_split": "<li\\b",
+      "link_regex": "^(/blog/[a-z0-9.-]+$|https://arxiv\\.org/abs/)",
+      "title_regex": "<span class=\"text-foreground font-serif[^\"]*\">(.*?)</span>",
+      "summary_regex": "<p class=\"line-clamp-2[^\"]*\">(.*?)</p>",
+      "note": "Publication index. Items link to a Liquid blog post when one exists, otherwise to arXiv."
+    },
+    {
+      "name": "Wafer",
+      "homepage": "https://www.wafer.ai/blog",
+      "strategy": "html",
+      "listing": "https://www.wafer.ai/blog",
+      "link_regex": "^/blog/[a-z0-9-]+$",
+      "title_regex": "<p[^>]*>(.*?)</p>",
+      "summary_regex": "</p>\\s*<p[^>]*>(.*?)</p>",
+      "require_title": true
+    },
+    {
+      "name": "Qwen",
+      "homepage": "https://qwen.ai/research",
+      "strategy": "qwen_api",
+      "api": "https://qwen.ai/api/v2/article/retrieval?type=qwen_ai&language=en-US",
+      "post_url": "https://qwen.ai/blog?id={path}",
+      "note": "qwen.ai is a JS app; this JSON endpoint backs the research page. qwenlm.github.io/blog stopped updating in 2025."
+    },
+    {
+      "name": "MiniMax",
+      "homepage": "https://www.minimax.io/blog",
+      "strategy": "html",
+      "listing": "https://www.minimax.io/blog",
+      "link_regex": "^(https://www\\.minimax\\.io)?/blog/[a-z0-9-]+$",
+      "title_regex": "<h2[^>]*>(.*?)</h2>",
+      "require_title": true
+    },
+    {
+      "name": "Thinking Machines",
+      "homepage": "https://thinkingmachines.ai/blog/",
+      "strategy": "html",
+      "listing": "https://thinkingmachines.ai/blog/",
+      "link_regex": "^/blog/[a-z0-9-]+/$",
+      "title_regex": "<h2[^>]*>(.*?)</h2>",
+      "require_title": true
+    },
+    {
+      "name": "Together AI",
+      "homepage": "https://www.together.ai/research-blog",
+      "strategy": "rss",
+      "feed": "https://www.together.ai/blog/rss.xml",
+      "note": "Feed covers the whole Together blog (product, partnerships, research). Filter for research and performance content."
+    },
+    {
+      "name": "Base Labs (Baseten)",
+      "homepage": "https://labs.baseten.co/",
+      "strategy": "html",
+      "listing": "https://labs.baseten.co/articles",
+      "link_regex": "^/articles/[a-z0-9-]+$",
+      "title_regex": "<p[^>]*>(.*?)</p>",
+      "require_title": true,
+      "date_precision": "month",
+      "note": "Listing shows month and year only. Posts count as in-window if their month overlaps it."
+    },
+    {
+      "name": "LMCache",
+      "homepage": "https://blog.lmcache.ai/en/",
+      "strategy": "rss",
+      "feed": "https://blog.lmcache.ai/en/feed/"
+    },
+    {
+      "name": "llm-d",
+      "homepage": "https://llm-d.ai/blog",
+      "strategy": "rss",
+      "feed": "https://llm-d.ai/blog/rss.xml"
+    }
+  ]
+}
