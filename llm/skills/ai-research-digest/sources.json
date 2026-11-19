@@ -72,7 +72,7 @@
     },
     {
       "name": "Together AI",
-      "homepage": "https://www.together.ai/research-blog",
+      "homepage": "https://www.together.ai/blog",
       "strategy": "rss",
       "feed": "https://www.together.ai/blog/rss.xml",
       "note": "Feed covers the whole Together blog (product, partnerships, research). Filter for research and performance content."

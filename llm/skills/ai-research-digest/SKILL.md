@@ -27,7 +27,7 @@ directly and report failures in Source status; never substitute a general search
 | Qwen | https://qwen.ai/research |
 | MiniMax | https://www.minimax.io/blog |
 | Thinking Machines | https://thinkingmachines.ai/blog/ |
-| Together AI | https://www.together.ai/research-blog |
+| Together AI | https://www.together.ai/blog (feed: https://www.together.ai/blog/rss.xml) |
 | Base Labs (Baseten) | https://labs.baseten.co/articles |
 | LMCache | https://blog.lmcache.ai/en/ |
 | llm-d | https://llm-d.ai/blog |
