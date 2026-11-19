@@ -1,6 +1,6 @@
 ---
 name: ai-research-digest
-description: Summarize the latest posts from tracked AI research and inference-engineering blogs (Hazy Research, vLLM, Liquid AI, Wafer, Qwen, MiniMax, Thinking Machines, Together AI, Base Labs, LMCache, llm-d) in a fixed digest format focused on performance and algorithmic changes. Use when the user asks for a research digest, what is new on AI research blogs, a daily or weekly roundup of AI blog posts, or a summary of recent posts from any of these sources.
+description: Summarize the latest posts from tracked AI research and inference-engineering blogs (Hazy Research, vLLM, Liquid AI, Wafer, Qwen, MiniMax, Thinking Machines, Together AI, Base Labs, LMCache, llm-d, Fireworks AI) in a fixed digest format focused on performance and algorithmic changes. Use when the user asks for a research digest, what is new on AI research blogs, a daily or weekly roundup of AI blog posts, or a summary of recent posts from any of these sources.
 ---
 
 # AI Research Digest
@@ -10,6 +10,32 @@ Builds a digest of recent posts from a fixed list of AI research blogs. It focus
 **algorithmic changes** (architectures, training and RL methods, decoding, quantization).
 Every run uses the same output format (see [Output format](#output-format)) so digests can be
 compared from one day to the next.
+
+## Scope
+
+Cover only these 13 sources. Do not use web search, arXiv listings, Hugging Face papers, news
+sites, or any other source to find posts. If the scripts cannot run, fetch the homepages below
+directly and report failures in Source status; never substitute a general search.
+
+| Source | Homepage |
+|---|---|
+| Hazy Research | https://hazyresearch.stanford.edu/blog |
+| vLLM | https://vllm.ai/blog |
+| Liquid AI Engineering | https://www.liquid.ai/engineering |
+| Liquid AI Research | https://www.liquid.ai/research |
+| Wafer | https://www.wafer.ai/blog |
+| Qwen | https://qwen.ai/research |
+| MiniMax | https://www.minimax.io/blog |
+| Thinking Machines | https://thinkingmachines.ai/blog/ |
+| Together AI | https://www.together.ai/research-blog |
+| Base Labs (Baseten) | https://labs.baseten.co/articles |
+| LMCache | https://blog.lmcache.ai/en/ |
+| llm-d | https://llm-d.ai/blog |
+| Fireworks AI | https://fireworks.ai/research |
+
+`sources.json` is the machine-readable copy of this list; keep the two in sync. The only arXiv
+links that belong in a digest are Liquid AI Research publications whose listing entry points to
+arXiv.
 
 ## Files
 
@@ -187,3 +213,6 @@ Check that titles are clean, dates are present, and URLs open the right post.
   is older than the window.
 - **Together AI:** the feed covers the whole company blog. Most product and partnership posts
   belong in Skimmed.
+- **Fireworks AI:** the research page has no feed. Featured cards link without a trailing slash
+  and the full list links with one; `fetch_index.py` treats both as the same post.
+  `https://fireworks.ai/research.md` is a plain-text copy of the listing if the HTML changes.

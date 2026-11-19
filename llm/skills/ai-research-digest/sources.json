@@ -2,7 +2,7 @@
   "sources": [
     {
       "name": "Hazy Research",
-      "homepage": "https://hazyresearch.stanford.edu/",
+      "homepage": "https://hazyresearch.stanford.edu/blog",
       "strategy": "html",
       "listing": "https://hazyresearch.stanford.edu/blog",
       "link_regex": "^/blog/\\d{4}-\\d{2}-\\d{2}-",
@@ -79,7 +79,7 @@
     },
     {
       "name": "Base Labs (Baseten)",
-      "homepage": "https://labs.baseten.co/",
+      "homepage": "https://labs.baseten.co/articles",
       "strategy": "html",
       "listing": "https://labs.baseten.co/articles",
       "link_regex": "^/articles/[a-z0-9-]+$",
@@ -99,6 +99,16 @@
       "homepage": "https://llm-d.ai/blog",
       "strategy": "rss",
       "feed": "https://llm-d.ai/blog/rss.xml"
+    },
+    {
+      "name": "Fireworks AI",
+      "homepage": "https://fireworks.ai/research",
+      "strategy": "html",
+      "listing": "https://fireworks.ai/research",
+      "link_regex": "^/research/[a-z0-9.-]+/?$",
+      "title_regex": "<h3[^>]*>(.*?)</h3>",
+      "summary_regex": "<p[^>]*>(.*?)</p>",
+      "require_title": true
     }
   ]
 }

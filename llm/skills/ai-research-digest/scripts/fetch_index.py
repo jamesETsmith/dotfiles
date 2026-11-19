@@ -46,7 +46,7 @@ DATE_PATTERNS = [
         re.I,
     ),
     re.compile(
-        r"\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{4})\b",
+        r"\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?\s+(\d{4})\b",
         re.I,
     ),
     re.compile(r"\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{4})\b"),
@@ -172,7 +172,8 @@ def from_html(source: dict) -> list[dict]:
     def add(url: str, title: str, date: str | None, summary: str, strong: bool) -> None:
         url = urllib.parse.urljoin(source["listing"], url)
         title = re.sub(r"\s+", " ", title).strip(" ·|-")
-        old = posts.get(url)
+        key = url.rstrip("/")
+        old = posts.get(key)
         if old:
             if strong and not old["_strong"]:
                 old.update(title=title or old["title"], _strong=True)
@@ -181,7 +182,7 @@ def from_html(source: dict) -> list[dict]:
             old["date"] = old["date"] or date
             old["summary"] = old["summary"] or summary
             return
-        posts[url] = {"title": title or url, "url": url, "date": date, "summary": summary, "_strong": strong}
+        posts[key] = {"title": title or url, "url": url, "date": date, "summary": summary, "_strong": strong}
 
     if source.get("item_split"):
         for block in re.split(source["item_split"], page)[1:]:
