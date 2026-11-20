@@ -30,7 +30,7 @@
       "listing": "https://www.liquid.ai/research",
       "item_split": "<li\\b",
       "link_regex": "^(/blog/[a-z0-9.-]+$|https://arxiv\\.org/abs/)",
-      "title_regex": "<span class=\"text-foreground font-serif[^\"]*\">(.*?)</span>",
+      "title_regex": "<span class=\"[^\"]*\\bfont-serif\\b[^\"]*\">(.*?)</span>",
       "summary_regex": "<p class=\"line-clamp-2[^\"]*\">(.*?)</p>",
       "note": "Publication index. Items link to a Liquid blog post when one exists, otherwise to arXiv."
     },
@@ -109,6 +109,34 @@
       "title_regex": "<h3[^>]*>(.*?)</h3>",
       "summary_regex": "<p[^>]*>(.*?)</p>",
       "require_title": true
+    },
+    {
+      "name": "Modal Engineering",
+      "homepage": "https://modal.com/blog",
+      "strategy": "html",
+      "listing": "https://modal.com/blog",
+      "item_split": "\\{slug:",
+      "href_regex": "^\"([a-z0-9-]+)\"",
+      "link_regex": "^[a-z0-9-]+$",
+      "url_template": "https://modal.com/blog/{path}",
+      "block_filter": "^\"[^\"]+\",image:\"[^\"]*\",title:\"(?:[^\"\\\\]|\\\\.)*\",date:\"\\d{4}-\\d{2}-\\d{2}\",category:\"Engineering\"",
+      "title_regex": "^\"[^\"]+\",image:\"[^\"]*\",title:\"((?:[^\"\\\\]|\\\\.)*)\"",
+      "summary_regex": ",description:\"((?:[^\"\\\\]|\\\\.)*)\"",
+      "note": "Posts are embedded as a JS array on the blog index; only the Engineering category is kept. The Atom feed at /blog/atom.xml has no categories."
+    },
+    {
+      "name": "Modal Research",
+      "homepage": "https://modal.com/blog",
+      "strategy": "html",
+      "listing": "https://modal.com/blog",
+      "item_split": "\\{slug:",
+      "href_regex": "^\"([a-z0-9-]+)\"",
+      "link_regex": "^[a-z0-9-]+$",
+      "url_template": "https://modal.com/blog/{path}",
+      "block_filter": "^\"[^\"]+\",image:\"[^\"]*\",title:\"(?:[^\"\\\\]|\\\\.)*\",date:\"\\d{4}-\\d{2}-\\d{2}\",category:\"Research\"",
+      "title_regex": "^\"[^\"]+\",image:\"[^\"]*\",title:\"((?:[^\"\\\\]|\\\\.)*)\"",
+      "summary_regex": ",description:\"((?:[^\"\\\\]|\\\\.)*)\"",
+      "note": "Posts are embedded as a JS array on the blog index; only the Research category is kept. The Atom feed at /blog/atom.xml has no categories."
     }
   ]
 }

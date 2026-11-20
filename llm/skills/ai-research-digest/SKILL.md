@@ -1,6 +1,6 @@
 ---
 name: ai-research-digest
-description: Summarize the latest posts from tracked AI research and inference-engineering blogs (Hazy Research, vLLM, Liquid AI, Wafer, Qwen, MiniMax, Thinking Machines, Together AI, Base Labs, LMCache, llm-d, Fireworks AI) in a fixed digest format focused on performance and algorithmic changes. Use when the user asks for a research digest, what is new on AI research blogs, a daily or weekly roundup of AI blog posts, or a summary of recent posts from any of these sources.
+description: Summarize the latest posts from tracked AI research and inference-engineering blogs (Hazy Research, vLLM, Liquid AI, Wafer, Qwen, MiniMax, Thinking Machines, Together AI, Base Labs, LMCache, llm-d, Fireworks AI, Modal) in a fixed digest format focused on performance and algorithmic changes. Use when the user asks for a research digest, what is new on AI research blogs, a daily or weekly roundup of AI blog posts, or a summary of recent posts from any of these sources.
 ---
 
 # AI Research Digest
@@ -13,7 +13,7 @@ compared from one day to the next.
 
 ## Scope
 
-Cover only these 13 sources. Do not use web search, arXiv listings, Hugging Face papers, news
+Cover only these 15 sources. Do not use web search, arXiv listings, Hugging Face papers, news
 sites, or any other source to find posts. If the scripts cannot run, fetch the homepages below
 directly and report failures in Source status; never substitute a general search.
 
@@ -32,6 +32,8 @@ directly and report failures in Source status; never substitute a general search
 | LMCache | https://blog.lmcache.ai/en/ |
 | llm-d | https://llm-d.ai/blog |
 | Fireworks AI | https://fireworks.ai/research |
+| Modal Engineering | https://modal.com/blog (Engineering category only) |
+| Modal Research | https://modal.com/blog (Research category only) |
 
 `sources.json` is the machine-readable copy of this list; keep the two in sync. The only arXiv
 links that belong in a digest are Liquid AI Research publications whose listing entry points to
@@ -182,7 +184,7 @@ Edit `sources.json`. Each entry needs `name`, `homepage`, and a `strategy`:
 | Strategy | Required fields | Optional fields |
 |---|---|---|
 | `rss` | `feed` (RSS or Atom URL) | |
-| `html` | `listing`, `link_regex` (matches post hrefs) | `title_regex`, `summary_regex`, `require_title`, `date_position` (`after` default, or `before`), `date_window` (chars, default 600), `item_split` (regex that splits the page into one block per post), `date_precision` (`month` when the listing shows no day) |
+| `html` | `listing`, `link_regex` (matches post hrefs) | `title_regex`, `summary_regex`, `require_title`, `date_position` (`after` default, or `before`), `date_window` (chars, default 600), `item_split` (regex that splits the page into one block per post), with block-mode extras `block_filter` (regex a block must match), `href_regex` (how to pull the link from a block), and `url_template` (with `{path}`), `date_precision` (`month` when the listing shows no day) |
 | `qwen_api` | `api`, `post_url` (with `{path}`) | |
 
 Prefer an RSS feed when the site has one (look for `<link rel="alternate" type="application/rss+xml">`).
@@ -216,3 +218,8 @@ Check that titles are clean, dates are present, and URLs open the right post.
 - **Fireworks AI:** the research page has no feed. Featured cards link without a trailing slash
   and the full list links with one; `fetch_index.py` treats both as the same post.
   `https://fireworks.ai/research.md` is a plain-text copy of the listing if the HTML changes.
+- **Modal:** the blog index embeds every post as a JavaScript array
+  (`{slug:"...",image:"...",title:"...",date:"...",category:"..."}`); the two Modal sources keep
+  only the Engineering and Research categories. The Atom feed (`/blog/atom.xml`) has no
+  categories, so it cannot replace this. If the sources go `empty`, search the page source for
+  `category:"Engineering"` and update `block_filter` and `title_regex`.

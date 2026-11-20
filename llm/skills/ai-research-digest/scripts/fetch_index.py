@@ -185,14 +185,19 @@ def from_html(source: dict) -> list[dict]:
         posts[key] = {"title": title or url, "url": url, "date": date, "summary": summary, "_strong": strong}
 
     if source.get("item_split"):
+        href_re = re.compile(source.get("href_regex", r"href=\"([^\"#]+)\""))
+        block_filter = source.get("block_filter")
         for block in re.split(source["item_split"], page)[1:]:
-            hrefs = [h for h in re.findall(r"href=\"([^\"#]+)\"", block) if link_re.search(h)]
+            if block_filter and not re.search(block_filter, block):
+                continue
+            hrefs = [h for h in href_re.findall(block) if link_re.search(h)]
             if not hrefs:
                 continue
+            href = source["url_template"].format(path=hrefs[0]) if source.get("url_template") else hrefs[0]
             title = _first(source.get("title_regex"), block)
             if source.get("require_title", True) and not title:
                 continue
-            add(hrefs[0], title, parse_date(block), _first(source.get("summary_regex"), block), bool(title))
+            add(href, title, parse_date(block), _first(source.get("summary_regex"), block), bool(title))
     else:
         window = int(source.get("date_window", 600))
         before_mode = source.get("date_position") == "before"
